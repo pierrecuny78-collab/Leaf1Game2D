@@ -1,15 +1,43 @@
 {
-  "scene_format": "leaf-scene",
-  "format_version": 1,
-  "scene_id": "world",
-  "name": "World",
-  "root": {
-    "type": "Node2D",
-    "name": "World",
-    "children": [
-      {"type":"Camera2D","name":"MainCamera","current":true},
-      {"type":"Node2D","name":"WorldObjects","children":[]},
-      {"type":"CharacterBody2D","name":"Player","position":{"x":240,"y":135},"groups":["player"]}
-    ]
-  }
+  "scene_format":"leaf-scene",
+  "format_version":1,
+  "scene_id":"world",
+  "name":"Les Terres de Brumefeuille",
+  "world":{"width":2400,"height":1600,"tile_size":24,"render_style":"pixel-art","camera_mode":"follow_player","biome":"green_meadow"},
+  "root":{"type":"Node2D","name":"World","children":[
+    {"type":"Camera2D","name":"MainCamera","current":true,"follow":"Player"},
+    {"type":"Node2D","name":"Map","children":[
+      {"type":"TileMap2D","name":"Ground","tile_set":"res://assets/tiles/green_meadow.tileset","layer":0},
+      {"type":"TileMap2D","name":"Paths","tile_set":"res://assets/tiles/paths.tileset","layer":1},
+      {"type":"TileMap2D","name":"Water","tile_set":"res://assets/tiles/water.tileset","layer":2}
+    ]},
+    {"type":"Node2D","name":"Kingdom","position":{"x":420,"y":300},"children":[
+      {"type":"Building2D","name":"TownHall","building_id":"town_hall","level":1,"position":{"x":0,"y":0}},
+      {"type":"Building2D","name":"GoldMine","building_id":"gold_mine","level":1,"position":{"x":120,"y":0}},
+      {"type":"Building2D","name":"Farm","building_id":"farm","level":1,"position":{"x":0,"y":120}},
+      {"type":"Building2D","name":"CreatureHabitat","building_id":"creature_habitat","level":1,"position":{"x":120,"y":120}}
+    ]},
+    {"type":"Node2D","name":"ExplorationZones","children":[
+      {"type":"Area2D","name":"GreenMeadow","zone_id":"green_meadow","unlocked":true,"position":{"x":850,"y":420}},
+      {"type":"Area2D","name":"WhisperingForest","zone_id":"whispering_forest","unlocked":false,"recommended_level":3,"position":{"x":1450,"y":520}},
+      {"type":"Area2D","name":"AshenCliffs","zone_id":"ashen_cliffs","unlocked":false,"recommended_level":6,"position":{"x":1950,"y":1050}}
+    ]},
+    {"type":"Node2D","name":"Interactables","children":[
+      {"type":"CharacterBody2D","name":"Player","position":{"x":480,"y":360},"groups":["player"],"script":"res://scripts/main.leaf"},
+      {"type":"NPC2D","name":"VillageGuide","npc_id":"guide_01","position":{"x":560,"y":360}},
+      {"type":"Collectible2D","name":"GoldenEgg01","item_id":"mystery_egg","position":{"x":900,"y":300}},
+      {"type":"ResourceNode2D","name":"WoodNode01","resource_id":"wood","amount":15,"position":{"x":1080,"y":600}},
+      {"type":"ResourceNode2D","name":"StoneNode01","resource_id":"stone","amount":10,"position":{"x":1320,"y":760}},
+      {"type":"DungeonGate2D","name":"OldDungeonGate","dungeon_id":"forgotten_roots","position":{"x":1780,"y":980}}
+    ]},
+    {"type":"Node2D","name":"WildCreatures","children":[
+      {"type":"Monster2D","name":"MossSlime01","creature_id":"moss_slime","level":1,"position":{"x":760,"y":620}},
+      {"type":"Monster2D","name":"EmberFox01","creature_id":"ember_fox","level":2,"position":{"x":1220,"y":900}},
+      {"type":"Monster2D","name":"StoneTurtle01","creature_id":"stone_turtle","level":3,"position":{"x":1680,"y":720}}
+    ]},
+    {"type":"Node2D","name":"SpawnPoints","children":[
+      {"type":"Marker2D","name":"PlayerSpawn","position":{"x":480,"y":360}},
+      {"type":"Marker2D","name":"DungeonReturn","position":{"x":1780,"y":1040}}
+    ]}
+  ]}
 }
