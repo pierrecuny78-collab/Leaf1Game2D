@@ -74,6 +74,24 @@ jobs:
       - name: Validate project
         run: godot --headless --editor --path . --quit
 
+      - name: Configure Android signing in export preset
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("export_presets.cfg")
+          s = p.read_text()
+          marker = '[preset.0.options]'
+          options = '''[preset.0.options]
+          keystore/debug="/home/runner/work/_temp/debug.keystore"
+          keystore/debug_user="androiddebugkey"
+          keystore/debug_password="android"
+          '''
+          if marker not in s:
+              raise SystemExit("Android export preset options section missing")
+          s = s.replace(marker, options.rstrip(), 1)
+          p.write_text(s)
+          PY
+
       - name: Export Android APK
         env:
           GODOT_ANDROID_KEYSTORE_DEBUG_PATH: ${{ runner.temp }}/debug.keystore
