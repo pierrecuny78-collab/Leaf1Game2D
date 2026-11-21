@@ -156,7 +156,7 @@ public class MainActivity extends Activity {
     }
 
     private void showGameSettings() {
-        android.content.SharedPreferences prefs = getSharedPreferences("leaf_game_settings", MODE_PRIVATE);
+        android.content.SharedPreferences prefs = getSharedPreferences("leaf_game_settings_" + projectDir.getName(), MODE_PRIVATE);
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(dp(18), dp(8), dp(18), dp(8));
@@ -193,7 +193,7 @@ public class MainActivity extends Activity {
             log("[AUTO] Simulation arrêtée.");
             status.setText("Mode automatique arrêté");
         } else {
-            boolean allowed = getSharedPreferences("leaf_game_settings", MODE_PRIVATE).getBoolean("background_simulation", true);
+            boolean allowed = getSharedPreferences("leaf_game_settings_" + projectDir.getName(), MODE_PRIVATE).getBoolean("background_simulation", true);
             if (!allowed) { log("[AUTO] Désactivé dans les paramètres."); status.setText("Mode arrière-plan désactivé"); return; }
             if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(intent);
             else startService(intent);
