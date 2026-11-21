@@ -1,0 +1,15 @@
+{
+  "scene_format": "leaf-scene",
+  "format_version": 1,
+  "scene_id": "world",
+  "name": "World",
+  "root": {
+    "type": "Node2D",
+    "name": "World",
+    "children": [
+      {"type":"Camera2D","name":"MainCamera","current":true},
+      {"type":"Node2D","name":"WorldObjects","children":[]},
+      {"type":"CharacterBody2D","name":"Player","position":{"x":240,"y":135},"groups":["player"]}
+    ]
+  }
+}
