@@ -87,7 +87,7 @@ jobs:
           keystore/debug_user="androiddebugkey"
           keystore/debug_password="android"
           '''
-          s = s.replace(marker, marker + "\\n" + signing.rstrip(), 1)
+          s = s.replace(marker, marker + "\n" + signing.rstrip(), 1)
           p.write_text(s)
           PY
 
