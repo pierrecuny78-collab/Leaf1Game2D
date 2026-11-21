@@ -120,6 +120,8 @@ public class MainActivity extends Activity {
         runtimeActions.addView(button("🔄 Mode automatique", () -> toggleAutoMode()),
             new LinearLayout.LayoutParams(0, dp(50), 1));
         root.addView(runtimeActions);
+        root.addView(button("⚙ Paramètres du jeu", () -> showGameSettings()),
+            new LinearLayout.LayoutParams(-1, dp(46)));
 
         currentFile = text(activeFile, 13, 0xFF7DD3FC);
         currentFile.setPadding(dp(14), dp(8), dp(8), dp(8)); root.addView(currentFile);
@@ -153,6 +155,33 @@ public class MainActivity extends Activity {
         setContentView(root);
     }
 
+    private void showGameSettings() {
+        android.content.SharedPreferences prefs = getSharedPreferences("leaf_game_settings", MODE_PRIVATE);
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(18), dp(8), dp(18), dp(8));
+        String[] keys = {"auto_start_on_select","background_simulation","offline_progress","auto_save","notifications","live_wallpaper","auto_production"};
+        String[] labels = {"Démarrer automatiquement à la sélection","Autoriser le mode automatique en arrière-plan","Continuer la progression hors ligne","Sauvegarder automatiquement","Afficher une notification pendant la simulation","Autoriser le fond d'écran animé (préparation)","Activer la production automatique des ressources"};
+        boolean[] defaults = {false,true,true,true,true,false,true};
+        for (int i=0;i<keys.length;i++) {
+            final String key=keys[i];
+            android.widget.Switch toggle=new android.widget.Switch(this);
+            toggle.setText(labels[i]); toggle.setTextColor(Color.WHITE); toggle.setTextSize(14);
+            toggle.setPadding(0,dp(8),0,dp(8)); toggle.setChecked(prefs.getBoolean(key,defaults[i]));
+            toggle.setOnCheckedChangeListener((button,checked)->prefs.edit().putBoolean(key,checked).apply());
+            panel.addView(toggle);
+        }
+        ScrollView scroll=new ScrollView(this); scroll.addView(panel);
+        new android.app.AlertDialog.Builder(this)
+            .setTitle("Paramètres — "+projectDir.getName()).setView(scroll)
+            .setPositiveButton("Terminé",(dialog,which)->{log("[PARAMÈTRES] Réglages enregistrés.");status.setText("Paramètres enregistrés");})
+            .setNeutralButton("Valeurs par défaut",(dialog,which)->{
+                android.content.SharedPreferences.Editor edit=prefs.edit();
+                for(int i=0;i<keys.length;i++) edit.putBoolean(keys[i],defaults[i]);
+                edit.apply(); log("[PARAMÈTRES] Valeurs par défaut restaurées.");
+            }).show();
+    }
+
     private void toggleAutoMode() {
         boolean running = getSharedPreferences("leaf_runtime", MODE_PRIVATE)
                 .getBoolean("auto_running", false);
@@ -164,6 +193,8 @@ public class MainActivity extends Activity {
             log("[AUTO] Simulation arrêtée.");
             status.setText("Mode automatique arrêté");
         } else {
+            boolean allowed = getSharedPreferences("leaf_game_settings", MODE_PRIVATE).getBoolean("background_simulation", true);
+            if (!allowed) { log("[AUTO] Désactivé dans les paramètres."); status.setText("Mode arrière-plan désactivé"); return; }
             if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(intent);
             else startService(intent);
             getSharedPreferences("leaf_runtime", MODE_PRIVATE).edit()
