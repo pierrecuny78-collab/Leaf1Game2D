@@ -1,41 +1,43 @@
 # Leaf1Game2D
 
-**Prototype RPG 2D — version 0.1.0**
+**RPG 2D hors ligne — version 0.1.1**
 
-Leaf1Game2D is an offline-first 2D fantasy RPG prototype made with Godot 4.4.1 and GDScript. The first playable build focuses on exploration, egg discovery, creature hatching, progression and local saves.
+Leaf1Game2D est un jeu de rôle 2D fantasy développé avec Godot 4.4.1 et GDScript. Le prototype privilégie une expérience jouable hors ligne, avec sauvegarde locale et commandes adaptées au mobile.
 
-## First playable features
+## Fonctionnalités de la version 0.1.1
 
-- Top-down 2D exploration in a fantasy meadow.
-- Mobile touch controls and keyboard controls (WASD / arrow keys).
-- Egg discovery and interaction.
-- Random creature hatching and collection.
-- Player levels, experience and coins.
-- A guide NPC and a small pond.
-- Local save file stored on the device.
-- Android APK build through GitHub Actions.
+- Exploration en vue de dessus d'une prairie étendue.
+- Déplacement tactile Android et clavier PC (ZQSD/WASD ou flèches).
+- Village, guide, étang, arbres et œufs cachés.
+- Six œufs à découvrir, chacun récupérable une seule fois.
+- Éclosion aléatoire et collection de sept créatures possibles.
+- Progression : niveaux, expérience, pièces et points de vie.
+- Première quête du guide avec récompense.
+- Premiers combats contre trois Slimes.
+- Écran de collection et sauvegarde locale persistante.
+- Export APK Android automatisé par GitHub Actions.
 
-## Play
+## Jouer
 
-Open this folder with Godot 4.4.1 and run the main scene at scenes/main.tscn.
+Ouvrir le dossier avec Godot 4.4.1 puis lancer `scenes/main.tscn`.
 
-On desktop, move with WASD or arrow keys. On Android, use the direction pad. Approach a golden egg and tap INTERAGIR, then tap ÉCLORE to hatch it. Use SAUVEGARDER to save progress.
+Sur PC, se déplacer avec WASD/ZQSD ou les flèches. Sur Android, utiliser le pavé directionnel. Approcher un œuf et toucher **INTERAGIR**. Utiliser **ÉCLORE** pour obtenir une créature. Approcher un Slime et toucher **ATTAQUER**. Parler au guide pour recevoir la première quête. Le bouton **COLLECTION** affiche les créatures et l'avancement de la quête.
 
-## Build Android APK
+## Construire l'APK
 
-The GitHub Actions workflow in .github/workflows/build-android.yml builds a debug APK on every push to main, and can also be started manually from the Actions tab.
+Le workflow `.github/workflows/build-android.yml` lance la compilation sur chaque push vers `main` et manuellement depuis l'onglet Actions.
 
-When the workflow succeeds, download the artifact named **Leaf1Game2D-Android-APK** from its run.
+Quand le workflow réussit, télécharger l'artefact **Leaf1Game2D-Android-APK** dans la page de l'exécution.
 
-The Android export uses Godot's debug signing configuration. It is intended for testing, not Play Store publication.
+L'APK debug est destiné aux tests et n'est pas une version signée pour publication sur le Play Store.
 
-## Roadmap
+## Feuille de route
 
-- 0.1.x: polish the first playable build, add sound, quests, inventory and more creatures.
-- 0.2.x: combat, skills, equipment and first boss.
-- 0.3.x: more biomes, dungeons, egg rarities and creature evolution.
-- Later: online co-op and a separate Android live-wallpaper companion.
+- **0.1.x** : stabilisation, interface, audio, inventaire et équilibrage.
+- **0.2.x** : compétences, équipement, boss et nouvelles zones.
+- **0.3.x** : raretés des œufs, évolution et davantage de créatures.
+- **Versions suivantes** : coopération en ligne facultative et compagnon fond d'écran animé Android indépendant.
 
-## Project principles
+## Principes
 
-Offline-first, no subscription, local save by default. Online features will remain optional and will not block offline play.
+Gratuit, sans abonnement, hors ligne en priorité. La sauvegarde locale est le mode par défaut. Les services en ligne resteront facultatifs.
