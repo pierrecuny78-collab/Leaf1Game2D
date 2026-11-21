@@ -5,7 +5,7 @@ config/name="Leaf1Game2D"
 config/description="A 2D fantasy RPG about exploration, egg hatching and collectible creatures."
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.4", "GL Compatibility")
-config/version="0.1.1"
+config/version="0.2.0"
 
 [display]
 window/size/viewport_width=960
