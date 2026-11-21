@@ -32,6 +32,7 @@ public class MainActivity extends Activity {
         l.setGravity(Gravity.CENTER_VERTICAL); return l;
     }
     private void log(String message) {
+        if (console == null) return;
         String old = console.getText().toString();
         console.setText(old + (old.isEmpty() ? "" : "\n") + message);
     }
