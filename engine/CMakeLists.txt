@@ -4,6 +4,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_library(leafengine SHARED
   src/engine.cpp
+  src/scene.cpp
   src/game.cpp
   src/jni_bridge.cpp
 )
