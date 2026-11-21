@@ -9,7 +9,14 @@ struct Color { uint8_t r{0}, g{0}, b{0}, a{255}; };
 struct Rect { int x{0}, y{0}, w{0}, h{0}; };
 struct Sprite { int x{0}, y{0}, w{0}, h{0}; };
 struct Creature { std::string id, name, element; int level{1}, hp{30}, max_hp{30}, attack{6}, xp{0}; };
-struct SaveData { int schema{1}; int coins{500}; int xp{0}; int player_level{1}; std::vector<Creature> creatures; };
+struct SaveData {
+  int schema{2};
+  int coins{500};
+  int xp{0};
+  int player_level{1};
+  int eggs_collected{0};
+  std::vector<Creature> creatures;
+};
 
 class PixelSurface {
 public:
@@ -36,12 +43,12 @@ public:
   void move_player(int dx, int dy);
   void collect_egg();
   void win_battle();
+  void restore_progress(int coins, int xp, int level, int eggs);
   const SaveData& save() const { return save_; }
   const Vec2i& player() const { return player_; }
 private:
   SaveData save_;
   Vec2i player_{240, 135};
-  int eggs_collected_{0};
   double animation_time_{0.0};
 };
 }
