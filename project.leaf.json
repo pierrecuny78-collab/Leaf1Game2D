@@ -1,0 +1,39 @@
+{
+  "format":"leaf-game-project",
+  "format_version":1,
+  "project":{
+    "id":"leaf1game2d","name":"Les Chroniques de Brumefeuille","short_name":"Brumefeuille",
+    "kind":"2d_creature_kingdom_rpg","version":"0.2.0-alpha",
+    "genre":["action-rpg","creature-collection","kingdom-builder","dungeon-roguelite","tactical-battler"],
+    "description":"RPG fantasy pixel-art hors ligne : explore, apprivoise des créatures, bâtis ton royaume et conquiers des donjons.",
+    "orientation":"landscape","offline_first":true,
+    "monetization":{"ads":false,"premium_currency":false,"pay_to_win":false}
+  },
+  "runtime":{
+    "engine":"LeafEngine2D","engine_api":"0.1","minimum_engine_api":"0.1",
+    "script_language":"LeafScript","script_version":"0.1-draft",
+    "entry_scene":"scenes/world.leafscene",
+    "rendering":{"mode":"2d","virtual_width":480,"virtual_height":270,"filter":"nearest","pixel_snap":true}
+  },
+  "graphics":{
+    "default_style":"pixel-art","default_sprite_width":64,"default_sprite_height":64,
+    "allow_non_pixel_art":true,"palette":"fantasy_nature",
+    "animation":{"spritesheet":true,"directions":4,"frame_based":true}
+  },
+  "gameplay":{
+    "world":{"exploration":true,"biomes":["green_meadow","whispering_forest","ashen_cliffs","frozen_hollow"]},
+    "creatures":{"collection":true,"hatching":true,"evolution":"planned","team_size":5,"elements":["nature","fire","water","air","earth","light","shadow"]},
+    "combat":{"mode":"turn_based","skills":true,"support_cards":true,"team_synergies":true},
+    "kingdom":{"building":true,"upgrades":true,"offline_production":true,"production_cap_hours":8},
+    "dungeons":{"procedural_rooms":true,"branching_choices":true,"bosses":true,"relics":true},
+    "survival":{"resource_gathering":true,"crafting":"planned","equipment":"planned"},
+    "progression":{"fast_early_game":true,"quests":true,"achievements":"planned","pvp":false}
+  },
+  "directories":{"scenes":"scenes","scripts":"scripts","assets":"assets","audio":"audio","data":"data","saves":"runtime-saves"},
+  "targets":["android","windows","linux","macos"],
+  "build":{"application_id":"com.leafvibe.leaf1game2d","min_sdk":23,"abis":["arm64-v8a","armeabi-v7a"],"save_scope":"per_game"},
+  "inspiration":{
+    "design_pillars":["collection et évolution de créatures","développement de royaume et défense","combats tactiques et cartes de soutien","exploration, récolte et survie légère","donjons à embranchements, boss et reliques","progression initiale généreuse sans achat obligatoire"],
+    "originality":"Univers, personnages, noms, cartes, créatures et ressources originaux. Les jeux cités servent uniquement de références de genre et de rythme."
+  }
+}
