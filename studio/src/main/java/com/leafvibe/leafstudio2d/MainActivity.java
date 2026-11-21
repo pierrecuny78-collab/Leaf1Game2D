@@ -1,6 +1,7 @@
 package com.leafvibe.leafstudio2d;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.graphics.Typeface;
 import android.graphics.Color;
@@ -110,6 +111,15 @@ public class MainActivity extends Activity {
         actions.addView(button("Enregistrer", () -> { files.put(activeFile, editor.getText().toString()); saveAll(); }), new LinearLayout.LayoutParams(0, dp(48), 1));
         actions.addView(button("Vérifier", () -> validateCode()), new LinearLayout.LayoutParams(0, dp(48), 1));
         root.addView(actions);
+        LinearLayout runtimeActions = row();
+        runtimeActions.addView(button("▶ Exécuter", () -> {
+            files.put(activeFile, editor.getText().toString());
+            saveAll();
+            startActivity(new Intent(this, GameActivity.class));
+        }), new LinearLayout.LayoutParams(0, dp(50), 1));
+        runtimeActions.addView(button("🔄 Mode automatique", () -> toggleAutoMode()),
+            new LinearLayout.LayoutParams(0, dp(50), 1));
+        root.addView(runtimeActions);
 
         currentFile = text(activeFile, 13, 0xFF7DD3FC);
         currentFile.setPadding(dp(14), dp(8), dp(8), dp(8)); root.addView(currentFile);
@@ -141,6 +151,26 @@ public class MainActivity extends Activity {
         status = text("Projet local • aucun accès réseau requis", 10, 0xFF94A3B8);
         status.setPadding(dp(12), dp(6), dp(8), dp(8)); root.addView(status);
         setContentView(root);
+    }
+
+    private void toggleAutoMode() {
+        boolean running = getSharedPreferences("leaf_runtime", MODE_PRIVATE)
+                .getBoolean("auto_running", false);
+        Intent intent = new Intent(this, GameRuntimeService.class);
+        if (running) {
+            stopService(intent);
+            getSharedPreferences("leaf_runtime", MODE_PRIVATE).edit()
+                    .putBoolean("auto_running", false).apply();
+            log("[AUTO] Simulation arrêtée.");
+            status.setText("Mode automatique arrêté");
+        } else {
+            if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(intent);
+            else startService(intent);
+            getSharedPreferences("leaf_runtime", MODE_PRIVATE).edit()
+                    .putBoolean("auto_running", true).apply();
+            log("[AUTO] Simulation activée. Notification permanente affichée.");
+            status.setText("Mode automatique actif en arrière-plan");
+        }
     }
 
     private void refreshFileBar() {
