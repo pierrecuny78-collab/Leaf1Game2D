@@ -52,7 +52,12 @@ jobs:
           unzip -q templates.tpz -d templates
           cp -r templates/templates/* "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/"
 
-      - name: Verify Android toolchain\n        run: |\n          sdkmanager --list_installed | grep -E "platforms;android-35|build-tools;35.0.0|ndk;23.2.8568313|cmake;3.10.2.4988404"\n          java -version\n\n      - name: Configure Godot Android SDK paths
+      - name: Verify Android toolchain
+        run: |
+          sdkmanager --list_installed | grep -E "platforms;android-35|build-tools;35.0.0|ndk;23.2.8568313|cmake;3.10.2.4988404"
+          java -version
+
+      - name: Configure Godot Android SDK paths
         run: |
           export JAVA_HOME="${JAVA_HOME:-$JAVA_HOME_17_X64}"
           test -d "$ANDROID_HOME"
