@@ -13,7 +13,7 @@ var player_dir := Vector2.DOWN
 var hp := 100
 var xp := 0
 var level := 1
-var coins := 0
+var coins := 500
 var eggs := 0
 var creatures: Array = []
 var team: Array = []
@@ -71,60 +71,76 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _draw() -> void:
+	# Pixel-art rendering: all world shapes are aligned to a 6 px grid.
 	var view := get_viewport_rect().size
 	var camera := player_pos - view / 2.0
 	camera.x = clampf(camera.x, 0.0, WORLD_SIZE.x - view.x)
 	camera.y = clampf(camera.y, 0.0, WORLD_SIZE.y - view.y)
-	draw_rect(Rect2(Vector2.ZERO, view), Color("#244d3b"), true)
-	# Grass texture
-	for x in range(0, int(WORLD_SIZE.x), 75):
-		for y in range(0, int(WORLD_SIZE.y), 75):
+	camera = (camera / 6.0).round() * 6.0
+	draw_rect(Rect2(Vector2.ZERO, view), Color("#315d3c"), true)
+	var tile := 24
+	for x in range(0, int(WORLD_SIZE.x), tile):
+		for y in range(0, int(WORLD_SIZE.y), tile):
 			var p := Vector2(x, y) - camera
-			if p.x > -10 and p.y > -10 and p.x < view.x + 10 and p.y < view.y + 10:
-				draw_circle(p, 1.8, Color(0.58, 0.75, 0.43, 0.28))
-	# Main road, village square and pond
-	draw_rect(Rect2(Vector2(0, 430) - camera, Vector2(WORLD_SIZE.x, 100)), Color("#b89a68"), true)
-	draw_rect(Rect2(Vector2(350, 230) - camera, Vector2(360, 290)), Color("#9b8058"), true)
-	draw_rect(Rect2(Vector2(1110, 120) - camera, Vector2(300, 190)), Color("#397e9b"), true)
-	draw_rect(Rect2(Vector2(1125, 135) - camera, Vector2(270, 160)), Color("#4d9db0"), true)
-	# Trees around the world
+			if p.x < -tile or p.y < -tile or p.x > view.x or p.y > view.y: continue
+			var shade := ((x / tile + y / tile) % 2)
+			draw_rect(Rect2(p, Vector2(tile, tile)), Color("#477b49") if shade == 0 else Color("#417344"), true)
+			if (x * 7 + y * 3) % 11 == 0:
+				draw_rect(Rect2(p + Vector2(6, 12), Vector2(6, 6)), Color("#6b9850"), true)
+	# Pixel road and village square.
+	draw_rect(Rect2(Vector2(0, 432) - camera, Vector2(WORLD_SIZE.x, 96)), Color("#92734d"), true)
+	draw_rect(Rect2(Vector2(0, 432) - camera, Vector2(WORLD_SIZE.x, 12)), Color("#b18d5d"), true)
+	draw_rect(Rect2(Vector2(348, 228) - camera, Vector2(360, 288)), Color("#765b42"), true)
+	for x in range(360, 700, 24):
+		for y in range(240, 510, 24):
+			draw_rect(Rect2(Vector2(x, y) - camera, Vector2(20, 20)), Color("#a98a5c"), true)
+	# Pixel pond.
+	draw_rect(Rect2(Vector2(1110, 120) - camera, Vector2(300, 192)), Color("#234d73"), true)
+	draw_rect(Rect2(Vector2(1122, 132) - camera, Vector2(276, 168)), Color("#3986a0"), true)
+	for i in range(8):
+		draw_rect(Rect2(Vector2(1140 + i * 30, 150 + (i % 3) * 42) - camera, Vector2(18, 6)), Color("#72b9bd"), true)
+	# Trees built from square pixels.
 	for i in range(54):
 		var tree_pos := Vector2(80.0 + float((i * 173) % 2050), 100.0 + float((i * 97) % 1200))
 		var p := tree_pos - camera
-		if p.x > -45 and p.y > -65 and p.x < view.x + 45 and p.y < view.y + 65:
-			draw_rect(Rect2(p + Vector2(-5, 5), Vector2(10, 29)), Color("#68452d"), true)
-			draw_circle(p, 25, Color("#27613d"))
-			draw_circle(p + Vector2(-10, -9), 15, Color("#34794a"))
-	# Eggs
+		if p.x < -42 or p.y < -48 or p.x > view.x + 42 or p.y > view.y + 48: continue
+		draw_rect(Rect2(p + Vector2(-6, 12), Vector2(12, 24)), Color("#69452e"), true)
+		draw_rect(Rect2(p + Vector2(-24, -12), Vector2(48, 30)), Color("#214e35"), true)
+		draw_rect(Rect2(p + Vector2(-18, -24), Vector2(36, 30)), Color("#34764a"), true)
+		draw_rect(Rect2(p + Vector2(-6, -30), Vector2(18, 12)), Color("#559454"), true)
+	# Eggs: pixel silhouettes and highlights.
 	for i in range(EGG_POINTS.size()):
 		if collected_eggs.has(i): continue
 		var ep: Vector2 = EGG_POINTS[i] - camera
-		if ep.x > -25 and ep.y > -25 and ep.x < view.x + 25 and ep.y < view.y + 25:
-			draw_circle(ep, 15, Color("#f2d36b"))
-			draw_arc(ep, 15, 0.0, TAU, 24, Color("#fff2bd"), 3.0)
-			draw_circle(ep + Vector2(-5, -4), 3, Color("#fff8d8"))
-	# NPC
+		if ep.x < -24 or ep.y < -24 or ep.x > view.x + 24 or ep.y > view.y + 24: continue
+		draw_rect(Rect2(ep + Vector2(-6, -18), Vector2(12, 6)), Color("#fff0b0"), true)
+		draw_rect(Rect2(ep + Vector2(-12, -12), Vector2(24, 24)), Color("#e7bd58"), true)
+		draw_rect(Rect2(ep + Vector2(-6, 12), Vector2(12, 6)), Color("#b87d43"), true)
+		draw_rect(Rect2(ep + Vector2(-6, -6), Vector2(6, 6)), Color("#fff2c2"), true)
+	# Guide NPC.
 	var npc := Vector2(520, 390) - camera
-	draw_circle(npc, 14, Color("#d6a64c"))
-	draw_circle(npc + Vector2(0, -14), 9, Color("#f0d6b2"))
-	draw_string(ThemeDB.fallback_font, npc + Vector2(-38, -29), "Guide", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
-	# Slimes
+	draw_rect(Rect2(npc + Vector2(-12, -2), Vector2(24, 24)), Color("#a36b35"), true)
+	draw_rect(Rect2(npc + Vector2(-9, -17), Vector2(18, 18)), Color("#e6c49b"), true)
+	draw_rect(Rect2(npc + Vector2(-12, -23), Vector2(24, 8)), Color("#e0b64d"), true)
+	draw_string(ThemeDB.fallback_font, npc + Vector2(-30, -30), "GUIDE", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color.WHITE)
+	# Wild slimes, made only of square pixels.
 	for enemy in enemies:
 		if not enemy.alive: continue
 		var ep: Vector2 = enemy.pos - camera
-		if ep.x > -30 and ep.y > -30 and ep.x < view.x + 30 and ep.y < view.y + 30:
-			draw_circle(ep, 17, Color("#79d66c"))
-			draw_circle(ep + Vector2(-6, -3), 2.5, Color("#173c27"))
-			draw_circle(ep + Vector2(6, -3), 2.5, Color("#173c27"))
-			draw_rect(Rect2(ep + Vector2(-15, 21), Vector2(30, 4)), Color("#502d2d"), true)
-			draw_rect(Rect2(ep + Vector2(-15, 21), Vector2(30.0 * float(enemy.hp) / 45.0, 4)), Color("#e76d5b"), true)
-	# Player
+		if ep.x < -30 or ep.y < -30 or ep.x > view.x + 30 or ep.y > view.y + 30: continue
+		draw_rect(Rect2(ep + Vector2(-18, -6), Vector2(36, 24)), Color("#39884c"), true)
+		draw_rect(Rect2(ep + Vector2(-12, -12), Vector2(24, 6)), Color("#62c76b"), true)
+		draw_rect(Rect2(ep + Vector2(-12, 0), Vector2(6, 6)), Color("#183c2b"), true)
+		draw_rect(Rect2(ep + Vector2(6, 0), Vector2(6, 6)), Color("#183c2b"), true)
+		draw_rect(Rect2(ep + Vector2(-18, 22), Vector2(36, 6)), Color("#432d32"), true)
+		draw_rect(Rect2(ep + Vector2(-18, 22), Vector2(36.0 * float(enemy.hp) / 45.0, 6)), Color("#e76d5b"), true)
+	# Player sprite: blocky adventurer, no vector circles.
 	var pp := player_pos - camera
-	draw_circle(pp + Vector2(0, 13), 15, Color(0, 0, 0, 0.25))
-	draw_circle(pp, 13, Color("#e9bd87"))
-	draw_circle(pp + Vector2(0, -7), 12, Color("#4b9bd0"))
-	draw_circle(pp + Vector2(0, -15), 8, Color("#e8c79b"))
-	draw_circle(pp + player_dir * 8 + Vector2(0, -16), 2, Color("#18232b"))
+	draw_rect(Rect2(pp + Vector2(-12, 12), Vector2(24, 6)), Color("#24372c"), true)
+	draw_rect(Rect2(pp + Vector2(-9, -3), Vector2(18, 21)), Color("#397cb5"), true)
+	draw_rect(Rect2(pp + Vector2(-12, -15), Vector2(24, 15)), Color("#e4bd91"), true)
+	draw_rect(Rect2(pp + Vector2(-12, -21), Vector2(24, 6)), Color("#71452f"), true)
+	draw_rect(Rect2(pp + Vector2(-6, -9), Vector2(6, 3)), Color("#25303a"), true)
 
 func _build_ui() -> void:
 	var ui := CanvasLayer.new()
@@ -261,8 +277,8 @@ func _interact() -> void:
 		if not collected_eggs.has(i) and player_pos.distance_to(EGG_POINTS[i]) < 82.0:
 			collected_eggs.append(i)
 			eggs += 1
-			coins += 5
-			_set_message("Œuf mystérieux récupéré ! +5 pièces. Tu peux maintenant le faire éclore.")
+			coins += 100
+			_set_message("Œuf mystérieux récupéré ! +5 pièces. Tu peux maintenant le faire éclore. +35 XP.")
 			_save_game()
 			return
 	if player_pos.distance_to(Vector2(520, 390)) < 105.0:
@@ -408,11 +424,11 @@ func _battle_victory() -> void:
 	var enemy_id := str(enemies[battle_enemy_index].id)
 	enemies[battle_enemy_index].alive = false
 	defeated_slimes.append(enemy_id)
-	coins += 20
-	_add_xp(55)
+	coins += 150
+	_add_xp(120)
 	battle_active = false
 	battle_panel.visible = false
-	_set_message("Victoire ! +20 pièces et +55 XP.")
+	_set_message("Victoire ! +150 pièces et +120 XP.")
 	_save_game()
 
 func _battle_defeat() -> void:
