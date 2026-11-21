@@ -6,6 +6,7 @@ const PLAYER_SPEED := 230.0
 const SAVE_PATH := "user://leaf1game2d_save.json"
 const EGG_POINTS := [Vector2(290, 280), Vector2(760, 370), Vector2(930, 720), Vector2(1510, 520), Vector2(1850, 1080), Vector2(1260, 1190)]
 const CREATURE_POOL := ["Mousselin", "Flammèche", "Aquapup", "Sylphin", "Rocoeuf", "Luminette", "Brindibou"]
+const MAX_TEAM_SIZE := 3
 
 var player_pos := Vector2(470, 330)
 var player_dir := Vector2.DOWN
@@ -15,6 +16,15 @@ var level := 1
 var coins := 0
 var eggs := 0
 var creatures: Array = []
+var team: Array = []
+var team_hp: Dictionary = {}
+var active_team_index := 0
+var battle_active := false
+var battle_enemy_index := -1
+var battle_enemy_hp := 0
+var battle_enemy_max_hp := 0
+var battle_label: Label
+var battle_panel: PanelContainer
 var collected_eggs: Array = []
 var defeated_slimes: Array = []
 var quest_claimed := false
@@ -57,15 +67,6 @@ func _process(delta: float) -> void:
 		info_label.text = "Explore la prairie • Approche-toi des objets • Interagir pour agir"
 	if enemy_attack_cooldown > 0.0:
 		enemy_attack_cooldown -= delta
-	for enemy in enemies:
-		if enemy.alive and player_pos.distance_to(enemy.pos) < 72.0 and enemy_attack_cooldown <= 0.0:
-			hp = maxi(0, hp - 5)
-			enemy_attack_cooldown = 1.4
-			_set_message("Un Slime t'attaque ! Éloigne-toi ou utilise ATTAQUER.")
-			if hp <= 0:
-				hp = 50
-				player_pos = Vector2(470, 330)
-				_set_message("Tu as été soigné au village. Tes pièces et créatures sont conservées.")
 	_refresh_ui()
 	queue_redraw()
 
@@ -180,6 +181,55 @@ func _build_ui() -> void:
 	collection_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	collection_panel.add_child(collection_label)
 
+	battle_panel = PanelContainer.new()
+	battle_panel.anchor_left = 0.5
+	battle_panel.anchor_right = 0.5
+	battle_panel.anchor_top = 0.5
+	battle_panel.anchor_bottom = 0.5
+	battle_panel.offset_left = -190
+	battle_panel.offset_right = 190
+	battle_panel.offset_top = -150
+	battle_panel.offset_bottom = 150
+	battle_panel.visible = false
+	ui.add_child(battle_panel)
+	var battle_box := VBoxContainer.new()
+	battle_box.add_theme_constant_override("separation", 8)
+	battle_panel.add_child(battle_box)
+	var battle_title := Label.new()
+	battle_title.text = "COMBAT DE MONSTRES"
+	battle_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	battle_title.add_theme_font_size_override("font_size", 20)
+	battle_box.add_child(battle_title)
+	battle_label = Label.new()
+	battle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	battle_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	battle_box.add_child(battle_label)
+	var battle_actions := HBoxContainer.new()
+	battle_box.add_child(battle_actions)
+	var basic_button := Button.new()
+	basic_button.text = "ATTAQUE"
+	basic_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	basic_button.pressed.connect(_battle_attack)
+	battle_actions.add_child(basic_button)
+	var skill_button := Button.new()
+	skill_button.text = "COMPÉTENCE"
+	skill_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	skill_button.pressed.connect(_battle_skill)
+	battle_actions.add_child(skill_button)
+	var battle_tools := HBoxContainer.new()
+	battle_box.add_child(battle_tools)
+	var switch_button := Button.new()
+	switch_button.text = "CHANGER"
+	switch_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	switch_button.pressed.connect(_battle_switch)
+	battle_tools.add_child(switch_button)
+	var flee_button := Button.new()
+	flee_button.text = "FUIR"
+	flee_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	flee_button.pressed.connect(_battle_flee)
+	battle_tools.add_child(flee_button)
+
+
 func _make_button(parent: Node, caption: String, offset: Vector2, button_size: Vector2) -> Button:
 	var b := Button.new()
 	b.text = caption
@@ -202,6 +252,11 @@ func _make_button(parent: Node, caption: String, offset: Vector2, button_size: V
 	return b
 
 func _interact() -> void:
+	if battle_active: return
+	for i in range(enemies.size()):
+		if enemies[i].alive and player_pos.distance_to(enemies[i].pos) < 100.0:
+			_start_battle(i)
+			return
 	for i in range(EGG_POINTS.size()):
 		if not collected_eggs.has(i) and player_pos.distance_to(EGG_POINTS[i]) < 82.0:
 			collected_eggs.append(i)
@@ -231,34 +286,151 @@ func _hatch() -> void:
 	eggs -= 1
 	var creature: String = CREATURE_POOL[randi() % CREATURE_POOL.size()]
 	creatures.append(creature)
+	if team.size() < MAX_TEAM_SIZE:
+		team.append(creature)
+		team_hp[creature] = _creature_stats(creature).hp
+		_set_message("Éclosion ! %s rejoint ta collection et ton équipe. +25 XP." % creature)
+	else:
+		_set_message("Éclosion ! %s rejoint ta collection. Équipe complète (3/3). +25 XP." % creature)
 	_add_xp(25)
-	_set_message("Éclosion ! %s rejoint ta collection. +25 XP." % creature)
 	_save_game()
 
 func _attack() -> void:
+	if battle_active:
+		_battle_attack()
+		return
 	var target_index := -1
 	var nearest := 999999.0
 	for i in range(enemies.size()):
 		var enemy = enemies[i]
 		if enemy.alive:
 			var distance := player_pos.distance_to(enemy.pos)
-			if distance < 95.0 and distance < nearest:
+			if distance < 115.0 and distance < nearest:
 				nearest = distance
 				target_index = i
 	if target_index == -1:
-		_set_message("Aucun ennemi à portée. Approche-toi d'un Slime.")
+		_set_message("Approche-toi d'un monstre sauvage puis touche INTERAGIR ou ATTAQUER.")
 		return
-	var target = enemies[target_index]
-	target.hp -= 20
-	if target.hp <= 0:
-		target.alive = false
-		defeated_slimes.append(target.id)
-		coins += 12
-		_add_xp(35)
-		_set_message("Slime vaincu ! +12 pièces et +35 XP.")
+	_start_battle(target_index)
+
+func _creature_stats(creature: String) -> Dictionary:
+	match creature:
+		"Mousselin": return {"hp":105, "attack":17, "element":"Nature", "skill":"Ronces vives"}
+		"Flammèche": return {"hp":82, "attack":23, "element":"Feu", "skill":"Boule ardente"}
+		"Aquapup": return {"hp":112, "attack":16, "element":"Eau", "skill":"Vague pressurisée"}
+		"Sylphin": return {"hp":88, "attack":21, "element":"Air", "skill":"Rafale"}
+		"Rocoeuf": return {"hp":145, "attack":13, "element":"Terre", "skill":"Éboulement"}
+		"Luminette": return {"hp":94, "attack":20, "element":"Lumière", "skill":"Éclat solaire"}
+		_: return {"hp":100, "attack":18, "element":"Nature", "skill":"Feuille-lame"}
+
+func _start_battle(enemy_index: int) -> void:
+	if team.is_empty():
+		_set_message("Fais éclore un compagnon avant de combattre.")
+		return
+	battle_active = true
+	battle_enemy_index = enemy_index
+	battle_enemy_max_hp = int(enemies[enemy_index].hp)
+	battle_enemy_hp = battle_enemy_max_hp
+	active_team_index = 0
+	for i in range(team.size()):
+		if int(team_hp.get(str(team[i]), _creature_stats(str(team[i])).hp)) > 0:
+			active_team_index = i
+			break
+	battle_panel.visible = true
+	_update_battle_ui()
+	_set_message("Combat commencé ! Choisis une action.")
+
+func _battle_attack() -> void:
+	if not battle_active: return
+	var creature := str(team[active_team_index])
+	var stats := _creature_stats(creature)
+	var damage := int(stats.attack) + level * 2
+	battle_enemy_hp = maxi(0, battle_enemy_hp - damage)
+	if battle_enemy_hp <= 0:
+		_battle_victory()
+		return
+	_battle_enemy_turn()
+	_update_battle_ui()
+
+func _battle_skill() -> void:
+	if not battle_active: return
+	var creature := str(team[active_team_index])
+	var stats := _creature_stats(creature)
+	var damage := int(stats.attack * 1.8) + level * 2
+	battle_enemy_hp = maxi(0, battle_enemy_hp - damage)
+	_set_message("%s utilise %s : %d dégâts !" % [creature, stats.skill, damage])
+	if battle_enemy_hp <= 0:
+		_battle_victory()
+		return
+	_battle_enemy_turn()
+	_update_battle_ui()
+
+func _battle_enemy_turn() -> void:
+	if not battle_active: return
+	var creature := str(team[active_team_index])
+	var damage := 9 + int(level / 2)
+	var remaining := maxi(0, int(team_hp.get(creature, _creature_stats(creature).hp)) - damage)
+	team_hp[creature] = remaining
+	if remaining <= 0:
+		_set_message("%s est K.-O. !" % creature)
+		var next_index := -1
+		for i in range(team.size()):
+			if int(team_hp.get(str(team[i]), 0)) > 0:
+				next_index = i
+				break
+		if next_index == -1:
+			_battle_defeat()
+			return
+		active_team_index = next_index
+		_set_message("À toi, %s ! Choisis ton action." % str(team[active_team_index]))
 	else:
-		_set_message("Coup porté au Slime ! Il lui reste %d PV." % target.hp)
+		_set_message("Le Slime contre-attaque : %d dégâts sur %s." % [damage, creature])
+
+func _battle_switch() -> void:
+	if not battle_active or team.size() < 2: return
+	for step in range(1, team.size() + 1):
+		var candidate := (active_team_index + step) % team.size()
+		if int(team_hp.get(str(team[candidate]), 0)) > 0:
+			active_team_index = candidate
+			_set_message("À toi, %s !" % str(team[active_team_index]))
+			_battle_enemy_turn()
+			_update_battle_ui()
+			return
+	_set_message("Aucun autre compagnon disponible.")
+
+func _battle_flee() -> void:
+	if not battle_active: return
+	battle_active = false
+	battle_panel.visible = false
+	_set_message("Tu as fui le combat. L'ennemi est toujours là.")
+
+func _battle_victory() -> void:
+	var enemy_id := str(enemies[battle_enemy_index].id)
+	enemies[battle_enemy_index].alive = false
+	defeated_slimes.append(enemy_id)
+	coins += 20
+	_add_xp(55)
+	battle_active = false
+	battle_panel.visible = false
+	_set_message("Victoire ! +20 pièces et +55 XP.")
 	_save_game()
+
+func _battle_defeat() -> void:
+	for creature in team:
+		team_hp[str(creature)] = _creature_stats(str(creature)).hp
+	battle_active = false
+	battle_panel.visible = false
+	player_pos = Vector2(470, 330)
+	_set_message("Équipe K.-O. Le guide a soigné et réanimé tes compagnons.")
+	_save_game()
+
+func _update_battle_ui() -> void:
+	if not battle_active or battle_label == null: return
+	var creature := str(team[active_team_index])
+	var stats := _creature_stats(creature)
+	var own_hp := int(team_hp.get(creature, stats.hp))
+	battle_label.text = "SLIME SAUVAGE\nPV : %d / %d\n\n%s • %s\nPV : %d / %d\nAttaque : %d | %s" % [battle_enemy_hp, battle_enemy_max_hp, creature, stats.element, own_hp, stats.hp, stats.attack, stats.skill]
+
 
 func _add_xp(amount: int) -> void:
 	xp += amount
@@ -293,7 +465,7 @@ func _set_message(value: String) -> void:
 func _save_game() -> void:
 	var data := {
 		"player_pos":[player_pos.x, player_pos.y], "hp":hp, "xp":xp, "level":level,
-		"coins":coins, "eggs":eggs, "creatures":creatures, "collected_eggs":collected_eggs,
+		"coins":coins, "eggs":eggs, "creatures":creatures, "team":team, "team_hp":team_hp, "collected_eggs":collected_eggs,
 		"defeated_slimes":defeated_slimes, "quest_claimed":quest_claimed
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -316,6 +488,15 @@ func _load_game() -> void:
 	coins = int(data.get("coins", 0))
 	eggs = int(data.get("eggs", 0))
 	creatures.assign(data.get("creatures", []))
+	team.assign(data.get("team", []))
+	team_hp = data.get("team_hp", {})
+	if team.is_empty() and not creatures.is_empty():
+		for creature in creatures:
+			if team.size() >= MAX_TEAM_SIZE: break
+			team.append(str(creature))
+	for creature in team:
+		if not team_hp.has(str(creature)):
+			team_hp[str(creature)] = _creature_stats(str(creature)).hp
 	collected_eggs.assign(data.get("collected_eggs", []))
 	defeated_slimes.assign(data.get("defeated_slimes", []))
 	quest_claimed = bool(data.get("quest_claimed", false))
