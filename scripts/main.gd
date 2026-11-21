@@ -183,12 +183,18 @@ func _build_ui() -> void:
 func _make_button(parent: Node, caption: String, offset: Vector2, button_size: Vector2) -> Button:
 	var b := Button.new()
 	b.text = caption
-	b.anchor_left = 1.0
-	b.anchor_right = 1.0
 	b.anchor_top = 1.0
 	b.anchor_bottom = 1.0
-	b.offset_left = offset.x
-	b.offset_right = offset.x + button_size.x
+	if caption == "SAUVEGARDER" or caption == "COLLECTION":
+		b.anchor_left = 0.0
+		b.anchor_right = 0.0
+		b.offset_left = offset.x
+		b.offset_right = offset.x + button_size.x
+	else:
+		b.anchor_left = 1.0
+		b.anchor_right = 1.0
+		b.offset_left = offset.x
+		b.offset_right = offset.x + button_size.x
 	b.offset_top = offset.y
 	b.offset_bottom = offset.y + button_size.y
 	b.add_theme_font_size_override("font_size", 15)
