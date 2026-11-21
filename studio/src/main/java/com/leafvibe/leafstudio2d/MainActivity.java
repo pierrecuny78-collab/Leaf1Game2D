@@ -90,7 +90,7 @@ public class MainActivity extends Activity {
     private void saveAll() {
         try {
             for (Map.Entry<String,String> e : files.entrySet()) write(new File(projectDir, e.getKey()), e.getValue());
-            status.setText("Enregistré localement");
+            if (status != null) status.setText("Enregistré localement");
             log("[SAVE] " + files.size() + " fichiers enregistrés");
         } catch (Exception e) { log("[ERREUR SAVE] " + e.getMessage()); }
     }
