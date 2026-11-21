@@ -15,7 +15,7 @@ public class GameActivity extends Activity {
         super.onCreate(state);
         getWindow().setStatusBarColor(Color.rgb(20, 38, 30));
         getWindow().setNavigationBarColor(Color.rgb(20, 38, 30));
-        setContentView(new WorldPreview());
+        setContentView(new WorldPreview(this));
     }
 
     private static final class WorldPreview extends View {
