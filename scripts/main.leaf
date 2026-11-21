@@ -1,0 +1,141 @@
+# LeafScript 0.1 — prototype de gameplay Leaf1Game2D
+# NOTE: fichier de conception éditable dans LeafStudio2D.
+# L'interpréteur LeafScript n'est pas encore intégré au moteur.
+
+game Leaf1Game2D {
+    start_scene = "scenes/world.leafscene"
+    save_slot = "profile_01"
+
+    settings {
+        offline = true
+        pixel_grid = 6
+        sprite_default = [64, 64]
+        autosave_seconds = 30
+    }
+
+    state {
+        player = { x: 480, y: 360, hp: 100, max_hp: 100, level: 1, xp: 0 }
+        resources = { gold: 500, food: 120, wood: 80, stone: 40, crystals: 0 }
+        eggs = 0
+        roster = []
+        active_team = []
+        team_limit = 5
+        completed_quests = []
+        discovered_zones = ["village", "green_meadow"]
+    }
+
+    # Boucle d'exploration : récolte, rencontres et événements.
+    on_interact(target) {
+        if target.kind == "resource" {
+            collect(target)
+        } else if target.kind == "egg" {
+            collect_egg(target)
+        } else if target.kind == "monster" {
+            battle.start(target)
+        } else if target.kind == "building" {
+            kingdom.open(target)
+        } else if target.kind == "dungeon_gate" {
+            dungeon.enter(target)
+        } else if target.kind == "npc" {
+            quests.talk(target)
+        }
+    }
+
+    function collect(resource) {
+        resources[resource.resource_id] += resource.amount
+        world.remove(resource.id)
+        log.info("Ressource récoltée : " + resource.name)
+        save.request()
+    }
+
+    function collect_egg(egg) {
+        if egg.collected == false {
+            eggs += 1
+            egg.collected = true
+            rewards.grant_gold(25)
+            log.success("Œuf obtenu ! Fais-le éclore au sanctuaire.")
+        }
+    }
+
+    function hatch_egg() {
+        require eggs > 0 else log.warn("Aucun œuf disponible.")
+        let creature = creatures.random_from_biome(world.current_biome)
+        roster.add(creature)
+        eggs -= 1
+        if active_team.size < team_limit {
+            active_team.add(creature.id)
+        }
+        log.success(creature.name + " rejoint ta collection.")
+        save.request()
+    }
+
+    # Combats tactiques : équipe, éléments, compétences et cartes de soutien.
+    system battle {
+        turn_based = true
+        team_limit = 5
+        support_cards = true
+        enemy_scaling = "zone_and_player_level"
+
+        on_victory(enemy) {
+            rewards.grant_gold(enemy.gold_reward)
+            rewards.grant_xp(enemy.xp_reward)
+            rewards.roll_loot(enemy.loot_table)
+            quests.progress("defeat", enemy.id, 1)
+            log.success("Victoire ! Récompenses récupérées.")
+            save.request()
+        }
+    }
+
+    # Royaume : bâtiments améliorables et production hors ligne.
+    system kingdom {
+        buildings = ["town_hall", "gold_mine", "farm", "sawmill",
+                     "stone_quarry", "creature_habitat", "training_ground",
+                     "forge", "watchtower", "portal"]
+
+        production_interval = 60
+        offline_production_cap_hours = 8
+
+        function upgrade(building) {
+            require resources.gold >= building.next_cost.gold
+            require resources.wood >= building.next_cost.wood
+            resources.gold -= building.next_cost.gold
+            resources.wood -= building.next_cost.wood
+            building.level += 1
+            building.recalculate_production()
+            log.success(building.name + " passe au niveau " + building.level)
+            save.request()
+        }
+    }
+
+    # Donjons rejouables : salles, choix de chemin, boss et reliques.
+    system dungeon {
+        room_count = 8
+        map_generation = "seeded"
+        run_rewards = ["gold", "equipment", "relics", "creature_eggs"]
+        permadeath = false
+
+        on_room_clear(room) {
+            let choice = dungeon.present_choices(room.exits)
+            dungeon.follow(choice)
+        }
+    }
+
+    # Quêtes, événements et progression rapide mais équilibrée.
+    system progression {
+        xp_curve = "fast_early_then_scaling"
+        daily_missions = false
+        premium_currency = false
+        pay_to_win = false
+        reward_sources = ["exploration", "battles", "quests", "dungeons", "kingdom"]
+    }
+
+    on_game_ready() {
+        save.load()
+        kingdom.apply_offline_production()
+        log.info("Leaf1Game2D prêt — bon retour, aventurier !")
+    }
+
+    on_game_exit() {
+        save.write()
+    }
+}
