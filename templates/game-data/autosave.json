@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "save_id": "autosave",
+  "player_id": "player_001",
+  "world_id": "world_default",
+  "saved_at": null,
+  "scene": "world",
+  "checkpoint": {},
+  "runtime_state": {}
+}
