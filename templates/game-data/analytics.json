@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "total_playtime_seconds": 0,
+  "sessions": 0,
+  "first_started_at": null,
+  "last_played_at": null,
+  "statistics": {
+    "enemies_defeated": 0,
+    "bosses_defeated": 0,
+    "eggs_found": 0,
+    "eggs_hatched": 0,
+    "deaths": 0,
+    "items_crafted": 0
+  }
+}
