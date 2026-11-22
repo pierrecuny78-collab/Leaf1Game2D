@@ -1,0 +1,28 @@
+{
+  "format": "leafgame",
+  "format_version": 1,
+  "project_id": "com.example.mygame",
+  "name": "MyGame",
+  "engine": "LeafEngine2D",
+  "engine_api_min": "0.1",
+  "entry_scene": "scenes/world.leafscene",
+  "entry_script": "main.py",
+  "capabilities": {
+    "player_profiles": true,
+    "world_saves": true,
+    "inventory": true,
+    "quests": true,
+    "achievements": true,
+    "eggs_and_companions": true,
+    "multiplayer": false,
+    "mods": false,
+    "live_wallpaper": false
+  },
+  "required_files": [
+    "project.json",
+    "data/world.json",
+    "data/players/player_001.json",
+    "data/profiles/default.json",
+    "data/saves/autosave.json"
+  ]
+}
