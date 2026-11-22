@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "world_id": "world_default",
+  "world_name": "Nouveau monde",
+  "seed": 0,
+  "day": 1,
+  "time_of_day": 8.0,
+  "weather": "clear",
+  "world_state": {},
+  "defeated_bosses": [],
+  "unlocked_regions": []
+}
