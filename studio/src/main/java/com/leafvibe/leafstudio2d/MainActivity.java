@@ -42,7 +42,7 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         getWindow().setStatusBarColor(Color.rgb(15, 23, 42));
         getWindow().setNavigationBarColor(Color.rgb(15, 23, 42));
-        projectDir = new File(getFilesDir(), "LeafProjects/FirstGame");
+        projectDir = new File("UNUSED_ZIP_ONLY_SESSION");
         loadProject();
         buildUi();
         log("[LeafStudio2D] Éditeur prêt — mode prototype 0.1.0-alpha");
