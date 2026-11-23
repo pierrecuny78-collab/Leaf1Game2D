@@ -308,7 +308,7 @@ public class MainActivity extends Activity {
                 invalidate();return true;
             }
             if(event.getAction()==android.view.MotionEvent.ACTION_MOVE&&selected>=0){
-                org.json.JSONObject n=sceneNodes.optJSONObject(selected);if(n!=null){org.json.JSONArray p=n.optJSONArray("position");if(p==null)p=new org.json.JSONArray();while(p.length()<2)p.put(0);p.put(0,Math.max(0,Math.min(460,p.optInt(0)+(int)(x-lastX))));p.put(1,Math.max(0,Math.min(250,p.optInt(1)+(int)(y-lastY))));try{n.put("position",p);}catch(Exception ignored){}}
+                org.json.JSONObject n=sceneNodes.optJSONObject(selected);if(n!=null){try{org.json.JSONArray p=n.optJSONArray("position");if(p==null)p=new org.json.JSONArray();while(p.length()<2)p.put(0);p.put(0,Math.max(0,Math.min(460,p.optInt(0)+(int)(x-lastX))));p.put(1,Math.max(0,Math.min(250,p.optInt(1)+(int)(y-lastY))));n.put("position",p);}catch(org.json.JSONException ignored){}}
                 lastX=x;lastY=y;invalidate();return true;
             }
             if(event.getAction()==android.view.MotionEvent.ACTION_UP){if(selected>=0)say("Objet sélectionné : "+sceneNodes.optJSONObject(selected).optString("name")+". Enregistre pour conserver ses changements.");return true;}
