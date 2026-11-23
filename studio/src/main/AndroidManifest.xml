@@ -5,6 +5,7 @@
         android:allowBackup="false"
         android:fullBackupContent="false"
         android:supportsRtl="true">
+        <activity android:name=".ProjectManagerActivity" android:screenOrientation="unspecified" android:exported="false" />
         <activity android:name=".GameLibraryActivity" android:screenOrientation="unspecified" android:exported="false" />
         <activity android:name=".GameActivity" android:screenOrientation="unspecified" android:exported="false" />
         <activity android:name=".MainActivity" android:screenOrientation="unspecified"
