@@ -2,6 +2,92 @@
 #include <algorithm>
 
 namespace leaf {
+namespace {
+void draw_sprite(PixelSurface& surface, int x, int y, const char* const* rows, int width) {
+  for (int row = 0; rows[row] != nullptr; ++row) {
+    for (int col = 0; col < width; ++col) {
+      const char px = rows[row][col];
+      Color color{};
+      bool visible = true;
+      switch (px) {
+        case '.': visible = false; break;
+        case 'K': color = Color{38, 43, 54, 255}; break;
+        case 'B': color = Color{48, 91, 153, 255}; break;
+        case 'b': color = Color{78, 139, 204, 255}; break;
+        case 'S': color = Color{222, 171, 126, 255}; break;
+        case 'H': color = Color{91, 55, 39, 255}; break;
+        case 'G': color = Color{69, 157, 91, 255}; break;
+        case 'g': color = Color{115, 201, 112, 255}; break;
+        case 'Y': color = Color{247, 211, 93, 255}; break;
+        case 'W': color = Color{255, 244, 204, 255}; break;
+        case 'P': color = Color{139, 91, 190, 255}; break;
+        default: visible = false; break;
+      }
+      if (visible) surface.pixel(x + col, y + row, color);
+    }
+  }
+}
+
+constexpr const char* kPlayerSprite[] = {
+  "......HHHH......",
+  ".....HHHHHH.....",
+  ".....SSSSSS.....",
+  ".....SKKSKS.....",
+  "......SSSS......",
+  ".....BBBBBB.....",
+  "....BBBBBBBB....",
+  "....BBbBBbBB....",
+  "....BBBBBBBB....",
+  ".....BBBBBB.....",
+  ".....BB..BB.....",
+  ".....BB..BB.....",
+  "....HH....HH....",
+  "....HH....HH....",
+  "................",
+  nullptr
+};
+
+constexpr const char* kSproutlingSprite[] = {
+  ".......GG.......",
+  "......GGGG......",
+  ".....GGgGGG.....",
+  "......GGGG......",
+  "....GGGGGGGG....",
+  "...GGGGGGGGGG...",
+  "...GGKKGGKKGG...",
+  "...GGGGGGGGGG...",
+  "....GGGGGGGG....",
+  ".....GGGGGG.....",
+  "......GGGG......",
+  ".....GG..GG.....",
+  "....GG....GG....",
+  "................",
+  "................",
+  "................",
+  nullptr
+};
+
+constexpr const char* kEggSprite[] = {
+  "......YYYY......",
+  ".....YWWYYY.....",
+  "....YYWWWWYY....",
+  "...YYWWWWWWYY...",
+  "...YYYYWWYYYY...",
+  "...YYYYYYYYYY...",
+  "....YYYYYYYY....",
+  ".....YYYYYY.....",
+  "......YYYY......",
+  ".......YY.......",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  nullptr
+};
+}
+
 Engine::Engine() {
   save_.creatures.push_back(Creature{"sproutling", "Sproutling", "Nature", 1, 30, 30, 6, 0});
 }
@@ -59,8 +145,10 @@ void Engine::render(PixelSurface& s) const {
     s.fill(Rect{x - 7, y - 9, 19, 12}, Color{31, 78, 48, 255});
     s.fill(Rect{x - 4, y - 13, 13, 8}, Color{53, 119, 68, 255});
   }
-  s.fill(Rect{player_.x - 4, player_.y - 2, 8, 8}, Color{57, 124, 181, 255});
-  s.fill(Rect{player_.x - 3, player_.y - 7, 6, 5}, Color{230, 190, 145, 255});
-  s.fill(Rect{player_.x - 4, player_.y - 9, 8, 3}, Color{111, 69, 47, 255});
+
+  // World props and characters now use readable 16x16 pixel-art sprites.
+  draw_sprite(s, 92, 148, kEggSprite, 16);
+  draw_sprite(s, 330, 132, kSproutlingSprite, 16);
+  draw_sprite(s, player_.x - 8, player_.y - 8, kPlayerSprite, 16);
 }
 }
