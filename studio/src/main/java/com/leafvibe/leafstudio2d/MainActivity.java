@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.*;
 import android.text.InputType;
 import androidx.documentfile.provider.DocumentFile;
