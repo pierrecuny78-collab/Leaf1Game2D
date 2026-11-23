@@ -263,7 +263,7 @@ public class MainActivity extends Activity {
         add("Modifier les paramètres et statistiques globales",()->editFile("game_settings.json"));
         add("Modifier les statistiques du profil actif",()->editFile("data/profiles/profile_"+activeProfile+".json"));
         add("Simulation automatique des statistiques",()->toggleAutoSimulation());
-        add("Activer / désactiver le fond d’écran animé Leaf",()->configureLiveWallpaper());
+        add("Configurer le fond d’écran animé Leaf",()->configureLiveWallpaper());
         add("Changer le dossier SD",()->pickTree());
         add("À propos / fonctionnement du mode fond",()->new android.app.AlertDialog.Builder(this)
             .setTitle("Paramètres LeafStudio2D")
