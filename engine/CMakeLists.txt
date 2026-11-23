@@ -23,4 +23,13 @@ if(LEAF_BUILD_TESTS)
   target_include_directories(leaf_scene_tests PRIVATE include)
   target_compile_options(leaf_scene_tests PRIVATE -Wall -Wextra -Wpedantic)
   add_test(NAME leaf_scene_tests COMMAND leaf_scene_tests)
+
+  add_executable(leaf_game_tests
+    tests/game_test.cpp
+    src/game.cpp
+    src/engine.cpp
+  )
+  target_include_directories(leaf_game_tests PRIVATE include)
+  target_compile_options(leaf_game_tests PRIVATE -Wall -Wextra -Wpedantic)
+  add_test(NAME leaf_game_tests COMMAND leaf_game_tests)
 endif()
