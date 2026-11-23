@@ -70,8 +70,16 @@ public class GameRuntimeService extends Service {
             JSONObject data=readJson(profile);
             double rate=config==null?0.0:Math.max(0.0,config.optDouble("production_per_minute",0.0));
             long play=data.optLong("play_time_seconds",0L)+seconds;
-            long currency=data.optLong("currency",0L)+(long)Math.floor(rate*seconds/60.0);
-            data.put("play_time_seconds",play);data.put("currency",currency);data.put("updated_at",System.currentTimeMillis());
+            // Keep fractional production between 15-second ticks; otherwise low rates
+            // would be rounded to zero forever.
+            double remainder=Math.max(0.0,data.optDouble("_production_remainder",0.0));
+            double accrued=remainder+(rate*seconds/60.0);
+            long earned=(long)Math.floor(accrued);
+            long currency=data.optLong("currency",0L)+earned;
+            data.put("play_time_seconds",play);
+            data.put("currency",currency);
+            data.put("_production_remainder",accrued-earned);
+            data.put("updated_at",System.currentTimeMillis());
             writeJson(profile,data);
             getSharedPreferences("leaf_runtime",MODE_PRIVATE).edit().putLong("last_tick",System.currentTimeMillis()).apply();
         }catch(Exception e){android.util.Log.e("LeafRuntime","Impossible de mettre à jour le profil",e);}
