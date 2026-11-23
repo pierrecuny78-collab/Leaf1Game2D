@@ -210,19 +210,110 @@ public class MainActivity extends Activity {
         }catch(Exception e){say("✗ Vérification échouée : "+e.getMessage());}
     }
 
+    private SceneCanvas sceneCanvas;
+    private org.json.JSONObject sceneDocument;
+    private org.json.JSONArray sceneNodes;
+
     private void sceneStudio(){
-        if(!ready())return;shell("ÉDITEUR DE SCÈNES","Scènes, objets, calques et collisions — édition du format LeafScene");
-        add("← Tableau de bord",()->dashboard());add("Ouvrir world.leafscene",()->editFile("scenes/world.leafscene"));
-        add("＋ Ajouter un objet à la scène",()->addSceneObject("Node2D","NewObject"));
-        add("＋ Ajouter un sprite",()->addSceneObject("Sprite2D","NewSprite"));
-        add("＋ Ajouter une zone de collision",()->addSceneObject("CollisionShape2D","NewCollision"));
-        add("＋ Ajouter un calque",()->addSceneObject("TileMapLayer","NewLayer"));
-        add("Créer une nouvelle scène",()->{try{createIfMissing("scenes/scene_"+System.currentTimeMillis()+".leafscene","{\n  \"scene_format\": \"leaf-scene\", \"format_version\": 1, \"root\": {\"type\": \"Node2D\", \"children\": []}\n}\n");say("Nouvelle scène créée.");}catch(Exception e){say(e.getMessage());}});
+        if(!ready())return;
+        shell("ÉDITEUR VISUEL 2D","Édition de la scène source • objets déplaçables • sauvegarde JSON");
+        add("← Tableau de bord",()->dashboard());
+        try{
+            DocumentFile file=find("scenes/world.leafscene",false);
+            if(file==null)throw new IOException("scenes/world.leafscene introuvable");
+            sceneDocument=new org.json.JSONObject(readDoc(file));
+            org.json.JSONObject rootNode=sceneDocument.optJSONObject("root");
+            if(rootNode==null)throw new IOException("La scène ne contient pas de nœud root valide");
+            sceneNodes=rootNode.optJSONArray("children");
+            if(sceneNodes==null){sceneNodes=new org.json.JSONArray();rootNode.put("children",sceneNodes);}
+            sceneCanvas=new SceneCanvas();
+            content.addView(sceneCanvas,new LinearLayout.LayoutParams(-1,dp(300)));
+            add("＋ Ajouter un rectangle",()->addVisualNode("Rectangle2D"));
+            add("＋ Ajouter un sprite (placeholder)",()->addVisualNode("Sprite2D"));
+            add("Supprimer l'objet sélectionné",()->deleteVisualNode());
+            add("💾 Enregistrer la scène",()->saveVisualScene());
+            add("Ouvrir le JSON de la scène",()->editFile("scenes/world.leafscene"));
+            TextView hint=label("Astuce : touche un objet pour le sélectionner, puis fais-le glisser. Les sprites sont encore représentés par des formes de remplacement tant que le chargement des textures n'est pas intégré.",11,0xffcbd5e1);
+            hint.setPadding(dp(12),dp(8),dp(12),dp(8));content.addView(hint);
+        }catch(Exception e){say("Ouverture de scène impossible : "+e.getMessage());}
     }
-    private void addSceneObject(String type,String name){
-        try{DocumentFile f=find("scenes/world.leafscene",false);String s=readDoc(f);int pos=s.lastIndexOf("]");if(pos<0){say("Scène invalide : tableau children absent.");return;}String item="{\"type\":\""+type+"\",\"name\":\""+name+"\",\"position\":[0,0],\"scale\":[1,1],\"rotation\":0,\"visible\":true}";
-            String before=s.substring(0,pos).trim();String insert=(before.endsWith("[")?"":",")+ "\n    "+item+"\n  ";s=s.substring(0,pos)+insert+s.substring(pos);writeDoc(f,s);say("Objet "+name+" ajouté à world.leafscene.");
+
+    private void addVisualNode(String type){
+        if(sceneNodes==null)return;
+        try{
+            org.json.JSONObject node=new org.json.JSONObject();
+            node.put("type",type);node.put("name",type.equals("Sprite2D")?"Sprite_"+(sceneNodes.length()+1):"Rectangle_"+(sceneNodes.length()+1));
+            org.json.JSONArray pos=new org.json.JSONArray();pos.put(40+(sceneNodes.length()%5)*24);pos.put(45+(sceneNodes.length()%4)*20);
+            node.put("position",pos);node.put("width",type.equals("Sprite2D")?32:48);node.put("height",type.equals("Sprite2D")?32:36);
+            node.put("color",type.equals("Sprite2D")?"#5CA8E8":"#67C587");node.put("visible",true);
+            sceneNodes.put(node);sceneCanvas.invalidate();say("Objet ajouté à la scène. Pense à enregistrer.");
         }catch(Exception e){say("Ajout impossible : "+e.getMessage());}
+    }
+
+    private void deleteVisualNode(){
+        if(sceneCanvas==null||sceneCanvas.selected<0||sceneCanvas.selected>=sceneNodes.length()){say("Sélectionne d'abord un objet.");return;}
+        org.json.JSONArray next=new org.json.JSONArray();
+        for(int i=0;i<sceneNodes.length();i++)if(i!=sceneCanvas.selected)next.put(sceneNodes.opt(i));
+        sceneNodes=next;
+        try{sceneDocument.getJSONObject("root").put("children",sceneNodes);}catch(Exception ignored){}
+        sceneCanvas.selected=-1;sceneCanvas.invalidate();say("Objet supprimé de la scène. Enregistre pour confirmer.");
+    }
+
+    private void saveVisualScene(){
+        try{
+            if(sceneDocument==null||sceneNodes==null)throw new IOException("Aucune scène ouverte");
+            sceneDocument.getJSONObject("root").put("children",sceneNodes);
+            DocumentFile file=find("scenes/world.leafscene",false);
+            if(file==null)throw new IOException("Fichier de scène introuvable");
+            writeDoc(file,sceneDocument.toString(2)+"\\n");
+            say("Scène enregistrée : scenes/world.leafscene");
+        }catch(Exception e){say("Échec de sauvegarde : "+e.getMessage());}
+    }
+
+    private final class SceneCanvas extends View {
+        private final android.graphics.Paint paint=new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private int selected=-1;
+        private float scaleX=1f,scaleY=1f;
+        private float lastX,lastY;
+        SceneCanvas(){super(MainActivity.this);setBackgroundColor(0xff172638);}
+        private int color(String value,int fallback){try{return android.graphics.Color.parseColor(value);}catch(Exception e){return fallback;}}
+        @Override protected void onDraw(android.graphics.Canvas canvas){
+            super.onDraw(canvas);
+            scaleX=getWidth()/480f;scaleY=getHeight()/270f;
+            canvas.save();canvas.scale(scaleX,scaleY);
+            paint.setColor(0xff203448);canvas.drawRect(0,0,480,270,paint);
+            paint.setColor(0xff30485b);paint.setStrokeWidth(1);
+            for(int x=0;x<=480;x+=24)canvas.drawLine(x,0,x,270,paint);
+            for(int y=0;y<=270;y+=24)canvas.drawLine(0,y,480,y,paint);
+            paint.setColor(0xff83b6d9);paint.setTextSize(12);canvas.drawText("WORLD • 480 × 270",8,16,paint);
+            for(int i=0;i<sceneNodes.length();i++){
+                org.json.JSONObject n=sceneNodes.optJSONObject(i);if(n==null||!n.optBoolean("visible",true))continue;
+                org.json.JSONArray p=n.optJSONArray("position");float x=p!=null?p.optInt(0,30):30;float y=p!=null?p.optInt(1,40):40;
+                float w=n.optInt("width",n.optInt("size",36)),h=n.optInt("height",n.optInt("size",36));
+                paint.setColor(color(n.optString("color","#67C587"),0xff67c587));canvas.drawRect(x,y,x+w,y+h,paint);
+                if(i==selected){paint.setColor(0xffffdf70);paint.setStyle(android.graphics.Paint.Style.STROKE);paint.setStrokeWidth(2);canvas.drawRect(x-3,y-3,x+w+3,y+h+3,paint);paint.setStyle(android.graphics.Paint.Style.FILL);}
+                paint.setColor(0xff102030);paint.setTextSize(8);canvas.drawText(n.optString("name","Node"),x+2,y+h+10,paint);
+            }
+            canvas.restore();
+        }
+        @Override public boolean onTouchEvent(android.view.MotionEvent event){
+            float x=event.getX()/Math.max(0.001f,scaleX),y=event.getY()/Math.max(0.001f,scaleY);
+            if(event.getAction()==android.view.MotionEvent.ACTION_DOWN){
+                lastX=x;lastY=y;selected=-1;
+                for(int i=sceneNodes.length()-1;i>=0;i--){
+                    org.json.JSONObject n=sceneNodes.optJSONObject(i);if(n==null)continue;
+                    org.json.JSONArray p=n.optJSONArray("position");float nx=p!=null?p.optInt(0,30):30,ny=p!=null?p.optInt(1,40):40;
+                    if(x>=nx&&x<=nx+n.optInt("width",36)&&y>=ny&&y<=ny+n.optInt("height",36)){selected=i;break;}
+                }
+                invalidate();return true;
+            }
+            if(event.getAction()==android.view.MotionEvent.ACTION_MOVE&&selected>=0){
+                org.json.JSONObject n=sceneNodes.optJSONObject(selected);if(n!=null){org.json.JSONArray p=n.optJSONArray("position");if(p==null)p=new org.json.JSONArray();while(p.length()<2)p.put(0);p.put(0,Math.max(0,Math.min(460,p.optInt(0)+(int)(x-lastX))));p.put(1,Math.max(0,Math.min(250,p.optInt(1)+(int)(y-lastY))));try{n.put("position",p);}catch(Exception ignored){}}
+                lastX=x;lastY=y;invalidate();return true;
+            }
+            if(event.getAction()==android.view.MotionEvent.ACTION_UP){if(selected>=0)say("Objet sélectionné : "+sceneNodes.optJSONObject(selected).optString("name")+". Enregistre pour conserver ses changements.");return true;}
+            return true;
+        }
     }
 
     private void scriptStudio(){
