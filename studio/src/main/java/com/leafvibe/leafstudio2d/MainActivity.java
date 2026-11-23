@@ -175,10 +175,38 @@ public class MainActivity extends Activity {
     }
     private void saveEditor(){if(editor==null)return;try{DocumentFile f=find(activePath,true);writeDoc(f,editor.getText().toString());say("Enregistré sur le stockage SD : "+activePath);}catch(Exception e){say("Échec sauvegarde : "+e.getMessage());}}
     private void validateEditor(){
-        if(editor==null)return;String s=editor.getText().toString();if(activePath.endsWith(".json")||activePath.endsWith(".leafscene")){
-            int braces=0;boolean str=false;for(int i=0;i<s.length();i++){char c=s.charAt(i);if(c=='"'&&(i==0||s.charAt(i-1)!='\\'))str=!str;if(!str&&c=='{')braces++;if(!str&&c=='}')braces--;}
-            say(braces==0&&!str?"Contrôle structurel basique réussi (ce n'est pas un parseur JSON complet).":"Structure JSON suspecte : accolades/chaîne déséquilibrées.");
-        }else say("Fichier relu. Aucun interpréteur LeafScript complet n'est embarqué dans cette version.");
+        if(editor==null)return;
+        String source=editor.getText().toString();
+        try{
+            if(activePath.endsWith(".json")||activePath.endsWith(".leafscene")){
+                org.json.JSONTokener tokener=new org.json.JSONTokener(source);
+                Object parsed=tokener.nextValue();
+                if(tokener.nextClean()!=0)throw new Exception("contenu supplémentaire après le JSON");
+                if(activePath.endsWith(".leafscene")){
+                    if(!(parsed instanceof org.json.JSONObject))throw new Exception("la scène doit être un objet JSON");
+                    org.json.JSONObject scene=(org.json.JSONObject)parsed;
+                    if(!scene.has("root"))throw new Exception("racine de scène manquante");
+                    say("✓ Scène valide : JSON analysé et racine présente.");
+                }else say("✓ JSON valide : syntaxe analysée intégralement.");
+                return;
+            }
+            if(activePath.endsWith(".leaf")){
+                int braces=0,parens=0,brackets=0;boolean quoted=false,escaped=false;
+                for(int i=0;i<source.length();i++){
+                    char ch=source.charAt(i);
+                    if(quoted){if(escaped)escaped=false;else if(ch=='\\\\')escaped=true;else if(ch=='"')quoted=false;continue;}
+                    if(ch=='"'){quoted=true;continue;}
+                    if(ch=='{')braces++;if(ch=='}')braces--;
+                    if(ch=='(')parens++;if(ch==')')parens--;
+                    if(ch=='[')brackets++;if(ch==']')brackets--;
+                    if(braces<0||parens<0||brackets<0)throw new Exception("fermeture inattendue à la position "+i);
+                }
+                if(quoted||braces!=0||parens!=0||brackets!=0)throw new Exception("chaîne ou délimiteurs non équilibrés");
+                say("✓ Contrôle lexical LeafScript réussi. Attention : ce contrôle ne remplace pas encore le compilateur LeafScript.");
+                return;
+            }
+            say("ℹ Aucun validateur spécialisé pour cette extension.");
+        }catch(Exception e){say("✗ Vérification échouée : "+e.getMessage());}
     }
 
     private void sceneStudio(){
