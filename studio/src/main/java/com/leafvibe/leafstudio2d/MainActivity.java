@@ -251,7 +251,7 @@ public class MainActivity extends Activity {
         new android.app.AlertDialog.Builder(this).setTitle("Créer un script").setView(input).setNegativeButton("Annuler",null).setPositiveButton("Créer",(d,w)->{
             String n=input.getText().toString().trim().replaceAll("[^A-Za-z0-9_-]","_");if(n.isEmpty())n="nouveau_script";
             String path=folder+"/"+n+".leaf";
-            try{if(find(path,false)!=null){say("Ce script existe déjà.");return;}createIfMissing(path,"# Script LeafScript du projet\\n");editFile(path);}
+            try{if(find(path,false)!=null){say("Ce script existe déjà.");return;}createIfMissing(path,"# Script LeafScript du projet\n");editFile(path);}
             catch(Exception e){say("Création impossible : "+e.getMessage());}
         }).show();
     }
@@ -294,7 +294,7 @@ public class MainActivity extends Activity {
     private void saveJsonFile(String path,org.json.JSONObject data)throws Exception{
         DocumentFile f=find(path,true);
         if(f==null)throw new IOException("Impossible de créer "+path);
-        writeDoc(f,data.toString(2)+"\\n");
+        writeDoc(f,data.toString(2)+"\n");
     }
     private void editNumberSetting(String key,String title,boolean profile){
         if(!ready())return;
