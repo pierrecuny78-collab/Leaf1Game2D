@@ -271,7 +271,7 @@ public class MainActivity extends Activity {
     }
     private void toggleAutoSimulation(){
         boolean running=getSharedPreferences("leaf_runtime",MODE_PRIVATE).getBoolean("auto_running",false);
-        Intent i=new Intent(this,GameRuntimeService.class);
+        Intent i=new Intent(this,GameRuntimeService.class);i.putExtra("profile_id",activeProfile);
         if(running){
             stopService(i);
             getSharedPreferences("leaf_runtime",MODE_PRIVATE).edit().putBoolean("auto_running",false).apply();
