@@ -194,7 +194,7 @@ public class MainActivity extends Activity {
                 int braces=0,parens=0,brackets=0;boolean quoted=false,escaped=false;
                 for(int i=0;i<source.length();i++){
                     char ch=source.charAt(i);
-                    if(quoted){if(escaped)escaped=false;else if(ch=='\\\\')escaped=true;else if(ch=='"')quoted=false;continue;}
+                    if(quoted){if(escaped)escaped=false;else if(ch=='\\')escaped=true;else if(ch=='"')quoted=false;continue;}
                     if(ch=='"'){quoted=true;continue;}
                     if(ch=='{')braces++;if(ch=='}')braces--;
                     if(ch=='(')parens++;if(ch==')')parens--;
