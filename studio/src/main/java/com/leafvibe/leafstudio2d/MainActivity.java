@@ -219,6 +219,18 @@ public class MainActivity extends Activity {
     }
     private void settings(){shell("PRÉFÉRENCES","LeafStudio2D 0.4.0 • mode hors ligne");add("← Tableau de bord",()->dashboard());add("Changer le dossier SD",()->pickTree());add("Basculer l'explorateur complet",()->{fullExplorer=!fullExplorer;dashboard();});add("À propos / limites",()->new android.app.AlertDialog.Builder(this).setTitle("LeafStudio2D 0.4.0").setMessage("L'éditeur gère les fichiers de projet via le sélecteur Android (SAF), crée les dossiers de données, les trois profils, édite les scènes et exporte/importer des ZIP.\n\nL'aperçu reste une démonstration. L'exécution complète de LeafScript, l'éditeur graphique drag-and-drop, le moteur physique, le débogueur pas-à-pas et la compilation universelle ne sont pas encore intégrés.").setPositiveButton("OK",null).show());}
 
+    private void copyAsset(Uri uri){
+        try{
+            String name="asset_"+System.currentTimeMillis();
+            String path="assets/imported/"+name;
+            String type=getContentResolver().getType(uri);
+            if(type!=null&&type.startsWith("image/"))path+=".img";
+            else if(type!=null&&type.startsWith("audio/"))path+=".audio";
+            else path+=".bin";
+            DocumentFile out=find(path,true);InputStream in=getContentResolver().openInputStream(uri);OutputStream os=getContentResolver().openOutputStream(out.getUri(),"wt");
+            byte[] b=new byte[8192];int n;while((n=in.read(b))>0)os.write(b,0,n);in.close();os.close();say("Ressource importée : "+path);
+        }catch(Exception e){say("Import de ressource impossible : "+e.getMessage());}
+    }
     private void importZip(Uri uri)throws Exception{
         InputStream raw=getContentResolver().openInputStream(uri);ZipInputStream zin=new ZipInputStream(raw);ZipEntry e;byte[] buf=new byte[8192];int count=0;
         while((e=zin.getNextEntry())!=null){String name=e.getName();if(name.startsWith("/")||name.contains("..")||name.length()>240)continue;if(e.isDirectory()){ensureDir(name);continue;}DocumentFile out=find(name,true);if(out==null)continue;OutputStream os=getContentResolver().openOutputStream(out.getUri(),"wt");int n;while((n=zin.read(buf))>0)os.write(buf,0,n);os.close();count++;}zin.close();ensureStructure();say("Import ZIP terminé : "+count+" fichiers. Les fichiers importés ont remplacé les mêmes chemins du projet.");
