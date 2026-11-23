@@ -15,6 +15,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <service android:name=".LeafLiveWallpaperService" android:label="LeafStudio2D — Monde animé" android:permission="android.permission.BIND_WALLPAPER" android:exported="true">
+            <intent-filter><action android:name="android.service.wallpaper.WallpaperService" /></intent-filter>
+            <meta-data android:name="android.service.wallpaper" android:resource="@xml/leaf_wallpaper" />
+        </service>
         <service android:name=".GameRuntimeService" android:exported="false" android:stopWithTask="false" />
     </application>
 </manifest>
