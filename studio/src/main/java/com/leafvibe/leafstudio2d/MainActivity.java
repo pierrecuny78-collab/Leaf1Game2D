@@ -233,12 +233,12 @@ public class MainActivity extends Activity {
     }
     private String safeZipPath(String raw){
         if(raw==null||raw.length()==0||raw.length()>240)return null;
-        String name=raw.replace('\\\\','/');
+        String name=raw.replace('\\','/');
         if(name.startsWith("/")||name.matches("^[A-Za-z]:.*"))return null;
         StringBuilder clean=new StringBuilder();
         for(String part:name.split("/")){
             if(part.length()==0||part.equals(".")||part.equals(".."))return null;
-            if(part.indexOf(':')>=0||part.indexOf('\\\\')>=0)return null;
+            if(part.indexOf(':')>=0||part.indexOf('\\')>=0)return null;
             if(clean.length()>0)clean.append('/');
             clean.append(part);
         }
