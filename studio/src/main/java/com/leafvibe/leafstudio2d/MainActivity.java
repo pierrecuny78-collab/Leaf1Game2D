@@ -206,7 +206,7 @@ public class MainActivity extends Activity {
     private void logicStudio(){if(!ready())return;shell("LOGIQUE ET EXTENSIONS","Éditeur de règles événementielles et catalogue de modules");add("← Tableau de bord",()->dashboard());add("Créer un graphe logique JSON",()->{try{String p="data/logic/graph_"+System.currentTimeMillis()+".json";createIfMissing(p,"{\n  \"nodes\": [], \"connections\": []\n}\n");editFile(p);}catch(Exception e){say(e.getMessage());}});add("Catalogue d'extensions",()->openData("plugins/manifest.json","Extensions"));}
     private void profiles(){
         if(!ready())return;shell("PROFILS JOUEUR","Trois emplacements indépendants par projet • sauvegardes séparées");add("← Tableau de bord",()->dashboard());
-        for(int n=1;n<=3;n++){final int id=n;add("Profil "+n+(activeProfile==n?" • actif":""),()->{activeProfile=id;profiles();});add("Modifier les statistiques du profil "+n,()->editFile("data/profiles/profile_"+id+".json"));add("Ouvrir sauvegardes profil "+n,()->openFolder("saves/profile_"+n));}
+        for(int n=1;n<=3;n++){final int id=n;add("Profil "+n+(activeProfile==n?" • actif":""),()->{activeProfile=id;profiles();});add("Modifier les statistiques du profil "+n,()->editFile("data/profiles/profile_"+id+".json"));add("Ouvrir sauvegardes profil "+n,()->openFolder("saves/profile_"+id));}
         add("Créer une sauvegarde de profil actif",()->{try{String path="saves/profile_"+activeProfile+"/save_"+System.currentTimeMillis()+".json";createIfMissing(path,readDoc(find("data/profiles/profile_"+activeProfile+".json",false)));say("Sauvegarde créée : "+path);}catch(Exception e){say("Sauvegarde impossible : "+e.getMessage());}});
         add("Restaurer une sauvegarde (ouvrir explorateur)",()->{fullExplorer=true;workspace();});
     }
@@ -231,9 +231,57 @@ public class MainActivity extends Activity {
             byte[] b=new byte[8192];int n;while((n=in.read(b))>0)os.write(b,0,n);in.close();os.close();say("Ressource importée : "+path);
         }catch(Exception e){say("Import de ressource impossible : "+e.getMessage());}
     }
+    private String safeZipPath(String raw){
+        if(raw==null||raw.length()==0||raw.length()>240)return null;
+        String name=raw.replace('\\\\','/');
+        if(name.startsWith("/")||name.matches("^[A-Za-z]:.*"))return null;
+        StringBuilder clean=new StringBuilder();
+        for(String part:name.split("/")){
+            if(part.length()==0||part.equals(".")||part.equals(".."))return null;
+            if(part.indexOf(':')>=0||part.indexOf('\\\\')>=0)return null;
+            if(clean.length()>0)clean.append('/');
+            clean.append(part);
+        }
+        return clean.toString();
+    }
+    private DocumentFile uniqueImportTarget(String path){
+        DocumentFile existing=find(path,false);
+        if(existing==null)return find(path,true);
+        int slash=path.lastIndexOf('/');String parent=slash>=0?path.substring(0,slash+1):"";
+        String file=slash>=0?path.substring(slash+1):path;
+        int dot=file.lastIndexOf('.');String base=dot>0?file.substring(0,dot):file;
+        String ext=dot>0?file.substring(dot):"";
+        for(int i=1;i<1000;i++){DocumentFile candidate=find(parent+base+"_imported_"+i+ext,false);if(candidate==null)return find(parent+base+"_imported_"+i+ext,true);}
+        return null;
+    }
     private void importZip(Uri uri)throws Exception{
-        InputStream raw=getContentResolver().openInputStream(uri);ZipInputStream zin=new ZipInputStream(raw);ZipEntry e;byte[] buf=new byte[8192];int count=0;
-        while((e=zin.getNextEntry())!=null){String name=e.getName();if(name.startsWith("/")||name.contains("..")||name.length()>240)continue;if(e.isDirectory()){ensureDir(name);continue;}DocumentFile out=find(name,true);if(out==null)continue;OutputStream os=getContentResolver().openOutputStream(out.getUri(),"wt");int n;while((n=zin.read(buf))>0)os.write(buf,0,n);os.close();count++;}zin.close();ensureStructure();say("Import ZIP terminé : "+count+" fichiers. Les fichiers importés ont remplacé les mêmes chemins du projet.");
+        InputStream raw=getContentResolver().openInputStream(uri);
+        if(raw==null)throw new IOException("Archive ZIP illisible");
+        ZipInputStream zin=new ZipInputStream(raw);ZipEntry e;byte[] buf=new byte[8192];
+        int count=0;long total=0;int entries=0;
+        try{
+            while((e=zin.getNextEntry())!=null){
+                if(++entries>5000)throw new IOException("Archive trop volumineuse : plus de 5000 entrées");
+                String name=safeZipPath(e.getName());
+                if(name==null){zin.closeEntry();continue;}
+                if(e.isDirectory()){ensureDir(name);zin.closeEntry();continue;}
+                DocumentFile out=uniqueImportTarget(name);
+                if(out==null)throw new IOException("Impossible de créer "+name);
+                OutputStream os=getContentResolver().openOutputStream(out.getUri(),"wt");
+                if(os==null)throw new IOException("Impossible d'écrire "+name);
+                int n;long current=0;
+                try{
+                    while((n=zin.read(buf))>0){
+                        current+=n;total+=n;
+                        if(current>50L*1024*1024||total>200L*1024*1024)throw new IOException("Limite de taille ZIP dépassée");
+                        os.write(buf,0,n);
+                    }
+                }finally{os.close();}
+                count++;zin.closeEntry();
+            }
+        }finally{zin.close();}
+        ensureStructure();
+        say("Import ZIP terminé : "+count+" fichiers. Les fichiers existants ont été conservés ; les doublons sont renommés.");
     }
     private void writeZip(Uri uri)throws Exception{
         OutputStream raw=getContentResolver().openOutputStream(uri);ZipOutputStream zout=new ZipOutputStream(raw);zipDir(projectRoot,"",zout);zout.finish();zout.close();
