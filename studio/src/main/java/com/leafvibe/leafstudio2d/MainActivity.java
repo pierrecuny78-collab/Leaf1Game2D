@@ -2,250 +2,230 @@ package com.leafvibe.leafstudio2d;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
-import android.graphics.Typeface;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.view.Gravity;
-import android.view.View;
 import android.widget.*;
 import android.text.InputType;
+import androidx.documentfile.provider.DocumentFile;
 import java.io.*;
 import java.util.*;
+import java.util.zip.*;
 
 public class MainActivity extends Activity {
-    private LinearLayout root, fileBar;
+    private static final int PICK_TREE=501, PICK_ZIP=502, SAVE_ZIP=503;
+    private static final String PREFS="leafstudio_workspace";
+    private LinearLayout root, content;
+    private TextView status, currentFile;
     private EditText editor;
-    private TextView console, currentFile, status;
-    private final LinkedHashMap<String,String> files = new LinkedHashMap<>();
-    private String activeFile = "scripts/main.leaf";
-    private File projectDir;
+    private DocumentFile storageRoot, projectRoot;
+    private String activePath="scripts/main.leaf";
+    private boolean fullExplorer=false;
+    private final LinkedHashMap<String,String> cache=new LinkedHashMap<>();
+    private int activeProfile=1;
 
-    private int dp(float v) { return (int)(v * getResources().getDisplayMetrics().density + 0.5f); }
-    private TextView text(String value, int size, int color) {
-        TextView t = new TextView(this); t.setText(value); t.setTextSize(size); t.setTextColor(color); return t;
-    }
-    private Button button(String label, Runnable action) {
-        Button b = new Button(this); b.setText(label); b.setAllCaps(false);
-        b.setOnClickListener(v -> action.run()); return b;
-    }
-    private LinearLayout row() {
-        LinearLayout l = new LinearLayout(this); l.setOrientation(LinearLayout.HORIZONTAL);
-        l.setGravity(Gravity.CENTER_VERTICAL); return l;
-    }
-    private void log(String message) {
-        if (console == null) return;
-        String old = console.getText().toString();
-        console.setText(old + (old.isEmpty() ? "" : "\n") + message);
-    }
+    private int dp(float n){return (int)(n*getResources().getDisplayMetrics().density+0.5f);}
+    private TextView label(String s,int size,int color){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(color);return t;}
+    private Button btn(String s,Runnable r){Button b=new Button(this);b.setText(s);b.setAllCaps(false);b.setOnClickListener(v->r.run());return b;}
+    private LinearLayout vertical(){LinearLayout l=new LinearLayout(this);l.setOrientation(1);return l;}
+    private LinearLayout horizontal(){LinearLayout l=new LinearLayout(this);l.setOrientation(0);l.setGravity(Gravity.CENTER_VERTICAL);return l;}
+    private void say(String s){if(status!=null)status.setText(s);}
+    private void log(String s){if(status!=null)status.setText(s);}
 
-    @Override public void onCreate(Bundle state) {
-        super.onCreate(state);
-        getWindow().setStatusBarColor(Color.rgb(15, 23, 42));
-        getWindow().setNavigationBarColor(Color.rgb(15, 23, 42));
-        projectDir = new File("UNUSED_ZIP_ONLY_SESSION");
-        loadProject();
-        buildUi();
-        log("[LeafStudio2D] Éditeur prêt — mode prototype 0.1.0-alpha");
-        log("[Projet] " + projectDir.getAbsolutePath());
+    @Override public void onCreate(Bundle b){
+        super.onCreate(b);
+        getWindow().setStatusBarColor(Color.rgb(15,23,42));
+        getWindow().setNavigationBarColor(Color.rgb(15,23,42));
+        String saved=getSharedPreferences(PREFS,MODE_PRIVATE).getString("tree_uri",null);
+        if(saved!=null){try{Uri u=Uri.parse(saved);storageRoot=DocumentFile.fromTreeUri(this,u);if(storageRoot!=null&&storageRoot.canWrite())openWorkspace();}catch(Exception ignored){}}
+        dashboard();
     }
 
-    private void loadProject() {
-        new File(projectDir, "scripts").mkdirs();
-        new File(projectDir, "scenes").mkdirs();
-        new File(projectDir, "assets").mkdirs();
-        String[] names = {"scripts/main.leaf", "scenes/world.leafscene", "project.leaf.json"};
-        for (String name : names) {
-            File f = new File(projectDir, name);
-            if (f.exists()) {
-                try { files.put(name, read(f)); } catch (Exception ignored) {}
-            }
-        }
-        if (!files.containsKey("scripts/main.leaf")) {
-            files.put("scripts/main.leaf",
-                "# LeafScript — script du jeu\n" +
-                "extends Node2D\n\n" +
-                "func _ready():\n" +
-                "    print(\"Bienvenue dans mon jeu !\")\n\n" +
-                "func _process(delta):\n" +
-                "    # Ajouter ici la logique du jeu\n" +
-                "    pass\n");
-        }
-        if (!files.containsKey("scenes/world.leafscene"))
-            files.put("scenes/world.leafscene", "{\n  \"scene_format\": \"leaf-scene\",\n  \"format_version\": 1,\n  \"scene_id\": \"world\",\n  \"root\": {\"type\": \"Node2D\", \"name\": \"World\", \"children\": []}\n}\n");
-        if (!files.containsKey("project.leaf.json"))
-            files.put("project.leaf.json", "{\n  \"name\": \"FirstGame\",\n  \"engine\": \"LeafEngine2D\",\n  \"engine_api\": \"0.1\",\n  \"entry_scene\": \"scenes/world.leafscene\"\n}\n");
-        saveAll();
-    }
-
-    private String read(File f) throws Exception {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        FileInputStream in = new FileInputStream(f);
-        byte[] buf = new byte[4096]; int n;
-        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
-        in.close(); return out.toString("UTF-8");
-    }
-    private void write(File f, String value) throws Exception {
-        File parent = f.getParentFile(); if (parent != null) parent.mkdirs();
-        FileOutputStream out = new FileOutputStream(f);
-        out.write(value.getBytes("UTF-8")); out.close();
-    }
-    private void saveAll() {
-        try {
-            for (Map.Entry<String,String> e : files.entrySet()) write(new File(projectDir, e.getKey()), e.getValue());
-            if (status != null) status.setText("Enregistré localement");
-            log("[SAVE] " + files.size() + " fichiers enregistrés");
-        } catch (Exception e) { log("[ERREUR SAVE] " + e.getMessage()); }
-    }
-
-    private void buildUi() {
-        root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.rgb(15, 23, 42));
-        TextView title = text("LEAF STUDIO 2D", 20, Color.WHITE);
-        title.setTypeface(Typeface.DEFAULT_BOLD); title.setPadding(dp(14), dp(12), dp(8), dp(4));
-        root.addView(title);
-        TextView subtitle = text("Éditeur de jeux • Code-first • Android / PC", 12, 0xFF9FB3C8);
-        subtitle.setPadding(dp(14), 0, dp(8), dp(8)); root.addView(subtitle);
-
-        root.addView(button("🎮 Bibliothèque de jeux", () -> startActivity(new Intent(this, GameLibraryActivity.class))), new LinearLayout.LayoutParams(-1, dp(48)));
-
-        LinearLayout actions = row();
-        actions.addView(button("＋ Script", () -> newScript()), new LinearLayout.LayoutParams(0, dp(48), 1));
-        actions.addView(button("Enregistrer", () -> { files.put(activeFile, editor.getText().toString()); saveAll(); }), new LinearLayout.LayoutParams(0, dp(48), 1));
-        actions.addView(button("Vérifier", () -> validateCode()), new LinearLayout.LayoutParams(0, dp(48), 1));
-        root.addView(actions);
-        LinearLayout runtimeActions = row();
-        runtimeActions.addView(button("▶ Exécuter", () -> {
-            files.put(activeFile, editor.getText().toString());
-            saveAll();
-            startActivity(new Intent(this, GameActivity.class));
-        }), new LinearLayout.LayoutParams(0, dp(50), 1));
-        runtimeActions.addView(button("🔄 Mode automatique", () -> toggleAutoMode()),
-            new LinearLayout.LayoutParams(0, dp(50), 1));
-        root.addView(runtimeActions);
-        root.addView(button("⚙ Paramètres du jeu", () -> showGameSettings()),
-            new LinearLayout.LayoutParams(-1, dp(46)));
-
-        currentFile = text(activeFile, 13, 0xFF7DD3FC);
-        currentFile.setPadding(dp(14), dp(8), dp(8), dp(8)); root.addView(currentFile);
-        fileBar = row(); fileBar.setPadding(dp(4), 0, dp(4), 0); root.addView(fileBar);
-        refreshFileBar();
-
-        editor = new EditText(this);
-        editor.setGravity(Gravity.TOP | Gravity.LEFT);
-        editor.setTextSize(13); editor.setTypeface(Typeface.MONOSPACE);
-        editor.setTextColor(0xFFE2E8F0); editor.setHintTextColor(0xFF64748B);
-        editor.setBackgroundColor(0xFF1E293B);
-        editor.setPadding(dp(12), dp(12), dp(12), dp(12));
-        editor.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
-        editor.setSingleLine(false); editor.setHorizontallyScrolling(true);
-        editor.setText(files.get(activeFile));
-        LinearLayout.LayoutParams editorParams = new LinearLayout.LayoutParams(-1, 0, 1.0f);
-        editorParams.setMargins(dp(8), dp(4), dp(8), dp(4)); root.addView(editor, editorParams);
-
-        LinearLayout consoleHeader = row();
-        TextView consoleTitle = text("CONSOLE / LOGS", 12, 0xFF86EFAC);
-        consoleTitle.setTypeface(Typeface.DEFAULT_BOLD); consoleTitle.setPadding(dp(12), dp(8), dp(8), dp(8));
-        consoleHeader.addView(consoleTitle, new LinearLayout.LayoutParams(0, -2, 1));
-        consoleHeader.addView(button("Effacer", () -> console.setText("")));
-        root.addView(consoleHeader);
-        console = text("", 11, 0xFFCBD5E1); console.setTypeface(Typeface.MONOSPACE);
-        console.setBackgroundColor(0xFF020617); console.setPadding(dp(10), dp(8), dp(10), dp(8));
-        ScrollView logScroll = new ScrollView(this); logScroll.addView(console);
-        root.addView(logScroll, new LinearLayout.LayoutParams(-1, dp(112)));
-        status = text("Projet local • aucun accès réseau requis", 10, 0xFF94A3B8);
-        status.setPadding(dp(12), dp(6), dp(8), dp(8)); root.addView(status);
+    private void shell(String title,String subtitle){
+        root=vertical();root.setBackgroundColor(0xff0f172a);
+        TextView h=label(title,21,Color.WHITE);h.setTypeface(Typeface.DEFAULT_BOLD);h.setPadding(dp(14),dp(12),dp(8),dp(3));root.addView(h);
+        TextView sub=label(subtitle,12,0xff9fb3c8);sub.setPadding(dp(14),0,dp(8),dp(10));root.addView(sub);
+        content=vertical();ScrollView sc=new ScrollView(this);sc.addView(content);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
+        status=label("LeafStudio2D 0.4.0 • hors ligne • stockage SD/ZIP",11,0xff86efac);status.setPadding(dp(12),dp(7),dp(8),dp(7));root.addView(status);
         setContentView(root);
     }
-
-    private void showGameSettings() {
-        android.content.SharedPreferences prefs = getSharedPreferences("leaf_game_settings_" + projectDir.getName(), MODE_PRIVATE);
-        LinearLayout panel = new LinearLayout(this);
-        panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(dp(18), dp(8), dp(18), dp(8));
-        String[] keys = {"auto_start_on_select","background_simulation","offline_progress","auto_save","notifications","live_wallpaper","auto_production"};
-        String[] labels = {"Démarrer automatiquement à la sélection","Autoriser le mode automatique en arrière-plan","Continuer la progression hors ligne","Sauvegarder automatiquement","Afficher une notification pendant la simulation","Autoriser le fond d'écran animé (préparation)","Activer la production automatique des ressources"};
-        boolean[] defaults = {false,true,true,true,true,false,true};
-        for (int i=0;i<keys.length;i++) {
-            final String key=keys[i];
-            android.widget.Switch toggle=new android.widget.Switch(this);
-            toggle.setText(labels[i]); toggle.setTextColor(Color.WHITE); toggle.setTextSize(14);
-            toggle.setPadding(0,dp(8),0,dp(8)); toggle.setChecked(prefs.getBoolean(key,defaults[i]));
-            toggle.setOnCheckedChangeListener((button,checked)->prefs.edit().putBoolean(key,checked).apply());
-            panel.addView(toggle);
-        }
-        ScrollView scroll=new ScrollView(this); scroll.addView(panel);
-        new android.app.AlertDialog.Builder(this)
-            .setTitle("Paramètres — "+projectDir.getName()).setView(scroll)
-            .setPositiveButton("Terminé",(dialog,which)->{log("[PARAMÈTRES] Réglages enregistrés.");status.setText("Paramètres enregistrés");})
-            .setNeutralButton("Valeurs par défaut",(dialog,which)->{
-                android.content.SharedPreferences.Editor edit=prefs.edit();
-                for(int i=0;i<keys.length;i++) edit.putBoolean(keys[i],defaults[i]);
-                edit.apply(); log("[PARAMÈTRES] Valeurs par défaut restaurées.");
-            }).show();
+    private void add(String text,Runnable action){content.addView(btn(text,action),new LinearLayout.LayoutParams(-1,dp(48)));}
+    private void divider(){View v=new View(this);v.setBackgroundColor(0xff334155);content.addView(v,new LinearLayout.LayoutParams(-1,dp(1)));}
+    private void dashboard(){
+        shell("LEAF STUDIO 2D","Atelier de création 2D • projets multi-moteurs • Android / PC");
+        TextView intro=label("Espace de travail\n"+(projectRoot==null?"Aucun projet SD sélectionné":"Projet : "+projectRoot.getName()),14,Color.WHITE);intro.setPadding(dp(14),dp(10),dp(14),dp(10));content.addView(intro);
+        add("📁 Choisir le dossier de la carte SD",()->pickTree());
+        add("📦 Importer un projet ZIP",()->pickZip());
+        add("📤 Exporter le projet en ZIP",()->exportZip());
+        add("▶ Ouvrir l'espace de travail",()->workspace());
+        divider();
+        add("🗂 Vue simple / explorateur complet",()->{fullExplorer=!fullExplorer;workspace();});
+        add("🎨 Éditeur de scènes et cartes",()->sceneStudio());
+        add("🧱 Gestionnaire de ressources et assets",()->assetStudio());
+        add("🕹 Atelier RPG : héros, classes, objets, ennemis, boss",()->rpgStudio());
+        add("🎞 Spritesheets et animations",()->animationStudio());
+        add("📜 Quêtes, dialogues et événements",()->questStudio());
+        add("🧩 Logique visuelle et extensions",()->logicStudio());
+        add("🧪 Analyseur de projet et console",()->analyzer());
+        add("👤 Profils et sauvegardes (3)",()->profiles());
+        add("🎮 Bibliothèque des APK",()->startActivity(new Intent(this,GameLibraryActivity.class)));
+        add("▶ Aperçu de démonstration",()->startActivity(new Intent(this,GameActivity.class)));
+        add("⚙ Préférences et informations",()->settings());
     }
 
-    private void toggleAutoMode() {
-        boolean running = getSharedPreferences("leaf_runtime", MODE_PRIVATE)
-                .getBoolean("auto_running", false);
-        Intent intent = new Intent(this, GameRuntimeService.class);
-        if (running) {
-            stopService(intent);
-            getSharedPreferences("leaf_runtime", MODE_PRIVATE).edit()
-                    .putBoolean("auto_running", false).apply();
-            log("[AUTO] Simulation arrêtée.");
-            status.setText("Mode automatique arrêté");
-        } else {
-            boolean allowed = getSharedPreferences("leaf_game_settings_" + projectDir.getName(), MODE_PRIVATE).getBoolean("background_simulation", true);
-            if (!allowed) { log("[AUTO] Désactivé dans les paramètres."); status.setText("Mode arrière-plan désactivé"); return; }
-            if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(intent);
-            else startService(intent);
-            getSharedPreferences("leaf_runtime", MODE_PRIVATE).edit()
-                    .putBoolean("auto_running", true).apply();
-            log("[AUTO] Simulation activée. Notification permanente affichée.");
-            status.setText("Mode automatique actif en arrière-plan");
+    private void pickTree(){
+        Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_WRITE_URI_PERMISSION|Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        startActivityForResult(i,PICK_TREE);
+    }
+    private void pickZip(){
+        Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/zip");
+        startActivityForResult(i,PICK_ZIP);
+    }
+    private void exportZip(){
+        if(!ready())return;
+        Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/zip");i.putExtra(Intent.EXTRA_TITLE,projectRoot.getName()+"-LeafStudio2D.zip");startActivityForResult(i,SAVE_ZIP);
+    }
+    @Override protected void onActivityResult(int req,int result,Intent data){
+        super.onActivityResult(req,result,data);if(result!=RESULT_OK||data==null||data.getData()==null)return;
+        Uri u=data.getData();
+        try{
+            if(req==PICK_TREE){
+                int flags=data.getFlags()&(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                getContentResolver().takePersistableUriPermission(u,flags);
+                storageRoot=DocumentFile.fromTreeUri(this,u);getSharedPreferences(PREFS,MODE_PRIVATE).edit().putString("tree_uri",u.toString()).apply();openWorkspace();dashboard();
+            }else if(req==PICK_ZIP){if(!ready())return;importZip(u);workspace();}
+            else if(req==SAVE_ZIP){writeZip(u);say("ZIP exporté sur le stockage choisi.");}
+        }catch(Exception e){say("Erreur : "+e.getMessage());}
+    }
+    private void openWorkspace(){
+        if(storageRoot==null)return;
+        DocumentFile base=childDir(storageRoot,"LeafStudio2D");projectRoot=childDir(base,"Projects");
+        projectRoot=childDir(projectRoot,"FirstGame");
+        ensureStructure();say("Projet prêt sur le stockage sélectionné.");
+    }
+    private DocumentFile childDir(DocumentFile p,String n){DocumentFile d=p.findFile(n);return d!=null&&d.isDirectory()?d:p.createDirectory(n);}
+    private DocumentFile childFile(DocumentFile p,String n,String mime){DocumentFile f=p.findFile(n);return f!=null&&f.isFile()?f:p.createFile(mime,n);}
+    private boolean ready(){if(projectRoot==null){say("Choisis d'abord le dossier de la carte SD.");return false;}return true;}
+    private void ensureDir(String path){DocumentFile p=projectRoot;for(String s:path.split("/"))p=childDir(p,s);}
+    private DocumentFile find(String path,boolean create){
+        if(projectRoot==null)return null;String[] parts=path.split("/");DocumentFile p=projectRoot;
+        for(int i=0;i<parts.length-1;i++){DocumentFile d=p.findFile(parts[i]);if(d==null&&create)d=p.createDirectory(parts[i]);if(d==null)return null;p=d;}
+        DocumentFile f=p.findFile(parts[parts.length-1]);if(f==null&&create)f=p.createFile(mime(path),parts[parts.length-1]);return f;
+    }
+    private String mime(String p){if(p.endsWith(".json")||p.endsWith(".leafscene"))return "application/json";if(p.endsWith(".png"))return "image/png";if(p.endsWith(".jpg"))return "image/jpeg";return "text/plain";}
+    private String readDoc(DocumentFile f)throws Exception{InputStream in=getContentResolver().openInputStream(f.getUri());ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] b=new byte[8192];int n;while((n=in.read(b))>0)out.write(b,0,n);in.close();return out.toString("UTF-8");}
+    private void writeDoc(DocumentFile f,String s)throws Exception{OutputStream out=getContentResolver().openOutputStream(f.getUri(),"wt");out.write(s.getBytes("UTF-8"));out.flush();out.close();}
+    private void createIfMissing(String path,String value)throws Exception{DocumentFile f=find(path,false);if(f==null){f=find(path,true);if(f!=null)writeDoc(f,value);}}
+    private void ensureStructure(){
+        try{
+            String[] dirs={"scenes","scripts","assets/sprites","assets/tilesets","assets/audio","assets/fonts","data/heroes","data/classes","data/items","data/equipment","data/companions","data/enemies","data/bosses","data/quests","data/dialogues","data/skills","data/recipes","data/biomes","data/buildings","data/decorations","animations","ui","plugins","backups","data/profiles","saves/profile_1","saves/profile_2","saves/profile_3"};
+            for(String d:dirs)ensureDir(d);
+            createIfMissing("project.leaf.json","{\n  \"format\": \"leaf-project\",\n  \"schema_version\": 1,\n  \"name\": \"FirstGame\",\n  \"engine\": \"LeafEngine2D\",\n  \"entry_scene\": \"scenes/world.leafscene\",\n  \"supported_engines\": [\"LeafEngine2D\", \"Godot\", \"Other\"]\n}\n");
+            createIfMissing("scripts/main.leaf","# LeafScript — point d'entrée du projet\nextends Node2D\n\nfunc _ready():\n    print(\"Bienvenue dans LeafStudio2D\")\n");
+            createIfMissing("scenes/world.leafscene","{\n  \"scene_format\": \"leaf-scene\", \"format_version\": 1, \"scene_id\": \"world\",\n  \"root\": {\"type\": \"Node2D\", \"name\": \"World\", \"children\": []}\n}\n");
+            for(int n=1;n<=3;n++)createIfMissing("data/profiles/profile_"+n+".json",profileTemplate(n));
+            createIfMissing("data/items/items.json","{\n  \"items\": []\n}\n");
+            createIfMissing("data/heroes/heroes.json","{\n  \"heroes\": []\n}\n");
+            createIfMissing("data/enemies/enemies.json","{\n  \"enemies\": []\n}\n");
+            createIfMissing("data/quests/quests.json","{\n  \"quests\": []\n}\n");
+            createIfMissing("animations/animations.json","{\n  \"animations\": []\n}\n");
+        }catch(Exception e){say("Initialisation incomplète : "+e.getMessage());}
+    }
+    private String profileTemplate(int n){return "{\n  \"profile_id\": "+n+",\n  \"player_name\": \"Joueur "+n+"\",\n  \"level\": 1, \"experience\": 0, \"health\": 100, \"max_health\": 100,\n  \"stamina\": 100, \"currency\": 0, \"play_time_seconds\": 0,\n  \"inventory\": [], \"equipment\": {}, \"unlocked_areas\": [], \"completed_quests\": [],\n  \"created_at\": \"\", \"updated_at\": \"\"\n}\n";}
+
+    private void workspace(){
+        if(!ready())return;ensureStructure();shell("ESPACE DE TRAVAIL","Vue "+(fullExplorer?"Explorateur complet":"Simple")+" • "+projectRoot.getName());
+        add("← Tableau de bord",()->dashboard());add("＋ Nouveau script",()->{String p="scripts/script_"+System.currentTimeMillis()+".leaf";try{createIfMissing(p,"# Nouveau script LeafScript\n");editFile(p);}catch(Exception e){say(e.getMessage());}});
+        add("Enregistrer le fichier ouvert",()->saveEditor());
+        add("Basculer vue simple / complète",()->{fullExplorer=!fullExplorer;workspace();});
+        currentFile=label("Fichiers du projet",13,0xff7dd3fc);content.addView(currentFile);
+        listFiles(projectRoot,"",0);
+        if(editor!=null){content.addView(editor,new LinearLayout.LayoutParams(-1,dp(260)));}
+    }
+    private void listFiles(DocumentFile dir,String prefix,int depth){
+        DocumentFile[] fs=dir.listFiles();Arrays.sort(fs,(a,b)->a.getName().compareToIgnoreCase(b.getName()));
+        for(DocumentFile f:fs){
+            String path=prefix.isEmpty()?f.getName():prefix+"/"+f.getName();
+            if(f.isDirectory()){
+                if(fullExplorer||depth==0)add("📁 "+path+"/",()->{fullExplorer=true;workspace();});
+                if(fullExplorer)listFiles(f,path,depth+1);
+            }else if(fullExplorer||depth<2){add("📄 "+path,()->editFile(path));}
         }
     }
-
-    private void refreshFileBar() {
-        fileBar.removeAllViews();
-        for (String name : files.keySet()) {
-            Button b = new Button(this); b.setText(name.substring(name.lastIndexOf('/') + 1));
-            b.setTextSize(10); b.setAllCaps(false);
-            b.setOnClickListener(v -> {
-                files.put(activeFile, editor.getText().toString());
-                activeFile = name; currentFile.setText(name); editor.setText(files.get(name));
-                log("[FILE] Ouverture " + name);
-            });
-            fileBar.addView(b);
-        }
+    private void editFile(String path){
+        try{DocumentFile f=find(path,false);if(f==null){say("Fichier introuvable");return;}activePath=path;String text=readDoc(f);
+            shell("ÉDITEUR DE FICHIER",path);add("← Retour à l'explorateur",()->workspace());
+            editor=new EditText(this);editor.setGravity(Gravity.TOP|Gravity.LEFT);editor.setTextSize(13);editor.setTypeface(Typeface.MONOSPACE);editor.setTextColor(0xffe2e8f0);editor.setBackgroundColor(0xff1e293b);editor.setPadding(dp(10),dp(10),dp(10),dp(10));editor.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_MULTI_LINE|InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);editor.setText(text);
+            content.addView(editor,new LinearLayout.LayoutParams(-1,0,1));
+            add("💾 Enregistrer sans écraser d'autres fichiers",()->saveEditor());
+            add("🔎 Vérification JSON / structure",()->validateEditor());
+        }catch(Exception e){say("Lecture impossible : "+e.getMessage());}
+    }
+    private void saveEditor(){if(editor==null)return;try{DocumentFile f=find(activePath,true);writeDoc(f,editor.getText().toString());say("Enregistré sur le stockage SD : "+activePath);}catch(Exception e){say("Échec sauvegarde : "+e.getMessage());}}
+    private void validateEditor(){
+        if(editor==null)return;String s=editor.getText().toString();if(activePath.endsWith(".json")||activePath.endsWith(".leafscene")){
+            int braces=0;boolean str=false;for(int i=0;i<s.length();i++){char c=s.charAt(i);if(c=='"'&&(i==0||s.charAt(i-1)!='\\'))str=!str;if(!str&&c=='{')braces++;if(!str&&c=='}')braces--;}
+            say(braces==0&&!str?"Contrôle structurel basique réussi (ce n'est pas un parseur JSON complet).":"Structure JSON suspecte : accolades/chaîne déséquilibrées.");
+        }else say("Fichier relu. Aucun interpréteur LeafScript complet n'est embarqué dans cette version.");
     }
 
-    private void newScript() {
-        files.put(activeFile, editor.getText().toString());
-        String name = "scripts/script" + (files.size()) + ".leaf";
-        files.put(name, "# Nouveau script LeafScript\nextends Node2D\n\nfunc _ready():\n    pass\n");
-        activeFile = name; currentFile.setText(name); editor.setText(files.get(name));
-        refreshFileBar(); log("[FILE] Créé " + name);
+    private void sceneStudio(){
+        if(!ready())return;shell("ÉDITEUR DE SCÈNES","Scènes, objets, calques et collisions — édition du format LeafScene");
+        add("← Tableau de bord",()->dashboard());add("Ouvrir world.leafscene",()->editFile("scenes/world.leafscene"));
+        add("＋ Ajouter un objet à la scène",()->addSceneObject("Node2D","NewObject"));
+        add("＋ Ajouter un sprite",()->addSceneObject("Sprite2D","NewSprite"));
+        add("＋ Ajouter une zone de collision",()->addSceneObject("CollisionShape2D","NewCollision"));
+        add("＋ Ajouter un calque",()->addSceneObject("TileMapLayer","NewLayer"));
+        add("Créer une nouvelle scène",()->{try{createIfMissing("scenes/scene_"+System.currentTimeMillis()+".leafscene","{\n  \"scene_format\": \"leaf-scene\", \"format_version\": 1, \"root\": {\"type\": \"Node2D\", \"children\": []}\n}\n");say("Nouvelle scène créée.");}catch(Exception e){say(e.getMessage());}});
     }
+    private void addSceneObject(String type,String name){
+        try{DocumentFile f=find("scenes/world.leafscene",false);String s=readDoc(f);int pos=s.lastIndexOf("]");if(pos<0){say("Scène invalide : tableau children absent.");return;}String item="{\"type\":\""+type+"\",\"name\":\""+name+"\",\"position\":[0,0],\"scale\":[1,1],\"rotation\":0,\"visible\":true}";
+            String before=s.substring(0,pos).trim();String insert=(before.endsWith("[")?"":",")+ "\n    "+item+"\n  ";s=s.substring(0,pos)+insert+s.substring(pos);writeDoc(f,s);say("Objet "+name+" ajouté à world.leafscene.");
+        }catch(Exception e){say("Ajout impossible : "+e.getMessage());}
+    }
+    private void assetStudio(){
+        if(!ready())return;shell("GESTIONNAIRE D'ASSETS","Images, textures, audio, polices et ressources du jeu");add("← Tableau de bord",()->dashboard());
+        add("Importer une image / audio / police",()->pickAnyAsset());
+        add("Ouvrir sprites",()->openFolder("assets/sprites"));add("Ouvrir tilesets",()->openFolder("assets/tilesets"));add("Ouvrir audio",()->openFolder("assets/audio"));add("Ouvrir fonts",()->openFolder("assets/fonts"));
+        add("Créer fiche de ressource",()->{try{createIfMissing("assets/asset_catalog.json","{\n  \"assets\": []\n}\n");editFile("assets/asset_catalog.json");}catch(Exception e){say(e.getMessage());}});
+    }
+    private void pickAnyAsset(){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("*/*");startActivityForResult(i,510);}
+    private void openFolder(String path){fullExplorer=true;workspace();}
+    private void rpgStudio(){
+        if(!ready())return;shell("ATELIER RPG","Données structurées pour les systèmes de jeu");add("← Tableau de bord",()->dashboard());
+        String[][] entries={{"Héros","data/heroes/heroes.json"},{"Classes","data/classes/classes.json"},{"Objets / ressources","data/items/items.json"},{"Équipements","data/equipment/equipment.json"},{"Compagnons","data/companions/companions.json"},{"Ennemis","data/enemies/enemies.json"},{"Boss","data/bosses/bosses.json"},{"Compétences","data/skills/skills.json"},{"Recettes / artisanat","data/recipes/recipes.json"},{"Biomes","data/biomes/biomes.json"},{"Bâtiments","data/buildings/buildings.json"},{"Décorations","data/decorations/decorations.json"}};
+        for(String[] e:entries)add("✎ "+e[0],()->openData(e[1],e[0]));
+    }
+    private void openData(String path,String label){try{createIfMissing(path,"{\n  \""+path.substring(path.lastIndexOf('/')+1).replace(".json","")+"\": []\n}\n");editFile(path);}catch(Exception e){say(label+" : "+e.getMessage());}}
+    private void animationStudio(){if(!ready())return;shell("ATELIER D'ANIMATION","Spritesheets, animations image par image et paramètres de lecture");add("← Tableau de bord",()->dashboard());add("Modifier le catalogue d'animations",()->editFile("animations/animations.json"));add("Créer une animation",()->{try{String p="animations/animation_"+System.currentTimeMillis()+".json";createIfMissing(p,"{\n  \"name\": \"NewAnimation\", \"fps\": 8, \"loop\": true, \"frames\": []\n}\n");editFile(p);}catch(Exception e){say(e.getMessage());}});}
+    private void questStudio(){if(!ready())return;shell("QUÊTES ET DIALOGUES","Arbres de dialogue, objectifs, déclencheurs et récompenses");add("← Tableau de bord",()->dashboard());add("Quêtes",()->openData("data/quests/quests.json","Quêtes"));add("Dialogues",()->openData("data/dialogues/dialogues.json","Dialogues"));add("Événements et déclencheurs",()->openData("data/events/events.json","Événements"));}
+    private void logicStudio(){if(!ready())return;shell("LOGIQUE ET EXTENSIONS","Éditeur de règles événementielles et catalogue de modules");add("← Tableau de bord",()->dashboard());add("Créer un graphe logique JSON",()->{try{String p="data/logic/graph_"+System.currentTimeMillis()+".json";createIfMissing(p,"{\n  \"nodes\": [], \"connections\": []\n}\n");editFile(p);}catch(Exception e){say(e.getMessage());}});add("Catalogue d'extensions",()->openData("plugins/manifest.json","Extensions"));}
+    private void profiles(){
+        if(!ready())return;shell("PROFILS JOUEUR","Trois emplacements indépendants par projet • sauvegardes séparées");add("← Tableau de bord",()->dashboard());
+        for(int n=1;n<=3;n++){final int id=n;add("Profil "+n+(activeProfile==n?" • actif":""),()->{activeProfile=id;profiles();});add("Modifier les statistiques du profil "+n,()->editFile("data/profiles/profile_"+id+".json"));add("Ouvrir sauvegardes profil "+n,()->openFolder("saves/profile_"+n));}
+        add("Créer une sauvegarde de profil actif",()->{try{String path="saves/profile_"+activeProfile+"/save_"+System.currentTimeMillis()+".json";createIfMissing(path,readDoc(find("data/profiles/profile_"+activeProfile+".json",false)));say("Sauvegarde créée : "+path);}catch(Exception e){say("Sauvegarde impossible : "+e.getMessage());}});
+        add("Restaurer une sauvegarde (ouvrir explorateur)",()->{fullExplorer=true;workspace();});
+    }
+    private void analyzer(){
+        if(!ready())return;shell("ANALYSEUR ET CONSOLE","Contrôles de structure, ressources et compatibilité");add("← Tableau de bord",()->dashboard());
+        String[] req={"project.leaf.json","scenes/world.leafscene","scripts/main.leaf","data/profiles/profile_1.json","data/profiles/profile_2.json","data/profiles/profile_3.json","assets/sprites","assets/audio","animations"};
+        int ok=0;for(String p:req){DocumentFile f=find(p,false);boolean exists=f!=null;if(exists)ok++;TextView t=label((exists?"✓ ":"✗ ")+p,13,exists?0xff86efac:0xfffca5a5);t.setPadding(dp(12),dp(6),dp(8),dp(6));content.addView(t);}
+        TextView result=label("Éléments présents : "+ok+"/"+req.length+"\nL'analyse vérifie les fichiers attendus. Elle ne certifie pas l'exécution des scripts ni la compatibilité de chaque moteur.",13,Color.WHITE);result.setPadding(dp(12),dp(12),dp(12),dp(12));content.addView(result);
+        add("Ouvrir les paramètres du projet",()->editFile("project.leaf.json"));
+    }
+    private void settings(){shell("PRÉFÉRENCES","LeafStudio2D 0.4.0 • mode hors ligne");add("← Tableau de bord",()->dashboard());add("Changer le dossier SD",()->pickTree());add("Basculer l'explorateur complet",()->{fullExplorer=!fullExplorer;dashboard();});add("À propos / limites",()->new android.app.AlertDialog.Builder(this).setTitle("LeafStudio2D 0.4.0").setMessage("L'éditeur gère les fichiers de projet via le sélecteur Android (SAF), crée les dossiers de données, les trois profils, édite les scènes et exporte/importer des ZIP.\n\nL'aperçu reste une démonstration. L'exécution complète de LeafScript, l'éditeur graphique drag-and-drop, le moteur physique, le débogueur pas-à-pas et la compilation universelle ne sont pas encore intégrés.").setPositiveButton("OK",null).show());}
 
-    private void validateCode() {
-        String code = editor.getText().toString();
-        files.put(activeFile, code);
-        int opens = 0; boolean inString = false; char quote = 0;
-        for (int i = 0; i < code.length(); i++) {
-            char c = code.charAt(i);
-            if ((c == '"' || c == '\'') && (i == 0 || code.charAt(i - 1) != '\\')) {
-                if (!inString) { inString = true; quote = c; }
-                else if (quote == c) inString = false;
-            }
-            if (!inString && c == '{') opens++;
-            if (!inString && c == '}') opens--;
-            if (opens < 0) { log("[ERREUR] Accolade fermante inattendue à la position " + i); return; }
-        }
-        if (opens != 0) { log("[ERREUR] Accolades non équilibrées"); return; }
-        if (inString) { log("[AVERTISSEMENT] Chaîne de caractères non terminée"); return; }
-        log("[OK] Vérification structurelle réussie : " + activeFile);
-        log("[INFO] Le moteur LeafScript et l'exécution des scripts seront intégrés dans une prochaine version.");
-        status.setText("Vérification terminée — exécution non disponible");
+    private void importZip(Uri uri)throws Exception{
+        InputStream raw=getContentResolver().openInputStream(uri);ZipInputStream zin=new ZipInputStream(raw);ZipEntry e;byte[] buf=new byte[8192];int count=0;
+        while((e=zin.getNextEntry())!=null){String name=e.getName();if(name.startsWith("/")||name.contains("..")||name.length()>240)continue;if(e.isDirectory()){ensureDir(name);continue;}DocumentFile out=find(name,true);if(out==null)continue;OutputStream os=getContentResolver().openOutputStream(out.getUri(),"wt");int n;while((n=zin.read(buf))>0)os.write(buf,0,n);os.close();count++;}zin.close();ensureStructure();say("Import ZIP terminé : "+count+" fichiers. Les fichiers importés ont remplacé les mêmes chemins du projet.");
+    }
+    private void writeZip(Uri uri)throws Exception{
+        OutputStream raw=getContentResolver().openOutputStream(uri);ZipOutputStream zout=new ZipOutputStream(raw);zipDir(projectRoot,"",zout);zout.finish();zout.close();
+    }
+    private void zipDir(DocumentFile dir,String prefix,ZipOutputStream zout)throws Exception{
+        for(DocumentFile f:dir.listFiles()){String path=prefix.isEmpty()?f.getName():prefix+"/"+f.getName();if(f.isDirectory()){zipDir(f,path,zout);}else{zout.putNextEntry(new ZipEntry(path));InputStream in=getContentResolver().openInputStream(f.getUri());byte[] b=new byte[8192];int n;while((n=in.read(b))>0)zout.write(b,0,n);in.close();zout.closeEntry();}}
     }
 }
