@@ -106,7 +106,9 @@ public class MainActivity extends Activity {
         TextView subtitle = text("Éditeur de jeux • Code-first • Android / PC", 12, 0xFF9FB3C8);
         subtitle.setPadding(dp(14), 0, dp(8), dp(8)); root.addView(subtitle);
 
-        root.addView(button("🎮 Bibliothèque de jeux", () -> startActivity(new Intent(this, GameLibraryActivity.class))), new LinearLayout.LayoutParams(-1, dp(48)));\n\n        LinearLayout actions = row();
+        root.addView(button("🎮 Bibliothèque de jeux", () -> startActivity(new Intent(this, GameLibraryActivity.class))), new LinearLayout.LayoutParams(-1, dp(48)));
+
+        LinearLayout actions = row();
         actions.addView(button("＋ Script", () -> newScript()), new LinearLayout.LayoutParams(0, dp(48), 1));
         actions.addView(button("Enregistrer", () -> { files.put(activeFile, editor.getText().toString()); saveAll(); }), new LinearLayout.LayoutParams(0, dp(48), 1));
         actions.addView(button("Vérifier", () -> validateCode()), new LinearLayout.LayoutParams(0, dp(48), 1));
