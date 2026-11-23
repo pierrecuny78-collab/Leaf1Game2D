@@ -1,26 +1,35 @@
 # Leaf1Game2D
 
-**RPG 2D pixel art — LeafEngine2D native alpha 0.2.0**
+**RPG 2D pixel art — LeafEngine2D native alpha 0.3.0**
 
-Leaf1Game2D is an offline-first Android RPG prototype powered by the in-house C++17 LeafEngine2D core. It does not use Godot or Unity. Android's Activity/Canvas is the mobile shell; the game simulation and pixel buffer are implemented in C++ and exposed through JNI.
+Leaf1Game2D is an offline-first Android RPG prototype powered by the in-house C++17 LeafEngine2D core. Android's Activity/Canvas is the mobile shell; game simulation and pixel-buffer rendering are implemented in C++ and exposed through JNI.
 
-## Alpha 0.2.0
+## Alpha 0.3.0
 
-- Native C++17 game core built with Android NDK and CMake.
-- 480x270 pixel-art scene rendered with crisp nearest-neighbor scaling.
-- Touch movement, egg reward action (+100 coins, +35 XP), battle reward action (+150 coins, +120 XP).
-- Local progression persistence using Android SharedPreferences: coins, XP, player level and collected egg count survive app restarts.
-- XP level-up loop handles multiple level-ups from a single reward.
+- Native C++17 engine, Android NDK and CMake.
+- 480x270 pixel-art scene with crisp nearest-neighbor scaling.
+- Original 16x16 pixel-art sprites for the player, Sproutling creature and golden egg.
+- Touch movement and bounds checking.
+- Egg reward: +100 coins, +35 XP and one collected egg.
+- Battle reward: +150 coins, +120 XP; the first creature gains XP and levels up.
+- Local progression persistence for coins, XP, player level and egg count.
 - Offline prototype; no account or network permission.
 
-## Build APK
+## Build and downloads
 
-GitHub Actions builds a debug APK on pushes to main. Open Actions and download the artifact **Leaf1Game2D-Alpha-0.2.0-APK**. The APK is for testing and is not Play Store release-signed.
+GitHub Actions runs native C++ tests, builds the Android game APK and the LeafStudio2D editor APK, then packages both APKs with the complete source tree.
+
+Download from the repository's **Actions → Build LeafVibe 2D apps → Artifacts**:
+- `Leaf1Game2D-Alpha-0.3.0-APK`
+- `LeafStudio2D-Alpha-0.2.0-APK`
+- `Leaf1Game2D-Complet-0.3.0` (source ZIP + both APKs)
+
+The APKs are debug builds intended for testing, not Play Store release-signed packages. GitHub Actions artifacts are retained for 30 days.
 
 ## Engine architecture
 
-See docs/LEAFENGINE2D_ARCHITECTURE.md and engine/README.md. SDL2 is not currently used: the Android alpha uses the Android native UI shell and JNI, while LeafEngine2D owns the game logic and pixel rendering.
+See `docs/LEAFENGINE2D_ARCHITECTURE.md` and `engine/README.md`. SDL2 is not currently used: Android's Activity/Canvas is the mobile shell, while LeafEngine2D owns game logic and pixel rendering.
 
 ## Roadmap
 
-Next: real 64x64 pixel-art sprite sheets, animation playback, world collisions, egg inventory and hatching screen, battle UI and first boss. Later: kingdom progression, optional multiplayer, and a separate live-wallpaper service.
+Next: animation playback, world collisions, collectible objects with proximity checks, egg inventory and hatching screen, creature collection, battle UI and a first boss. Later: larger explorable maps, crafting, building, kingdom progression, optional multiplayer and a separate live-wallpaper service.
