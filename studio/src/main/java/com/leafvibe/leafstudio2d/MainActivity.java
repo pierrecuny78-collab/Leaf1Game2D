@@ -94,7 +94,9 @@ public class MainActivity extends Activity {
         Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/zip");i.putExtra(Intent.EXTRA_TITLE,projectRoot.getName()+"-LeafStudio2D.zip");startActivityForResult(i,SAVE_ZIP);
     }
     @Override protected void onActivityResult(int req,int result,Intent data){
-        super.onActivityResult(req,result,data);if(result!=RESULT_OK||data==null||data.getData()==null)return;
+        super.onActivityResult(req,result,data);
+        if(req==PROJECT_MANAGER){if(result==RESULT_OK){openWorkspace();dashboard();}return;}
+        if(result!=RESULT_OK||data==null||data.getData()==null)return;
         Uri u=data.getData();
         try{
             if(req==PICK_TREE){
@@ -104,7 +106,6 @@ public class MainActivity extends Activity {
             }else if(req==PICK_ZIP){if(!ready())return;importZip(u);workspace();}
             else if(req==SAVE_ZIP){writeZip(u);say("ZIP exporté sur le stockage choisi.");}
             else if(req==PICK_ASSET){if(!ready())return;copyAsset(u);assetStudio();}
-            else if(req==PROJECT_MANAGER){openWorkspace();dashboard();}
         }catch(Exception e){say("Erreur : "+e.getMessage());}
     }
     private void openWorkspace(){
