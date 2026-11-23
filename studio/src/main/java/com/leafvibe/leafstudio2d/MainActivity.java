@@ -262,13 +262,27 @@ public class MainActivity extends Activity {
         add("← Tableau de bord",()->dashboard());
         add("Modifier les paramètres et statistiques globales",()->editFile("game_settings.json"));
         add("Modifier les statistiques du profil actif",()->editFile("data/profiles/profile_"+activeProfile+".json"));
-        add("Simulation automatique en arrière-plan",()->toggleAutoSimulation());
+        add("Simulation automatique des statistiques",()->toggleAutoSimulation());
+        add("Activer / désactiver le fond d’écran animé Leaf",()->configureLiveWallpaper());
         add("Changer le dossier SD",()->pickTree());
         add("À propos / fonctionnement du mode fond",()->new android.app.AlertDialog.Builder(this)
             .setTitle("Paramètres LeafStudio2D")
             .setMessage("Les paramètres globaux sont dans game_settings.json (numéro d'enveloppe, niveau, santé, expérience, monnaie, production...). Les trois profils sont dans data/profiles/.\\n\\nLa simulation automatique fait progresser certaines données en arrière-plan avec une notification Android. Elle ne peut pas afficher le jeu derrière les autres applications. Pour cela, il faut créer un véritable fond d'écran animé Android (Live Wallpaper), que tu devras activer dans les paramètres Android.")
             .setPositiveButton("OK",null).show());
     }
+
+    private void configureLiveWallpaper(){
+        try{
+            Intent intent=new Intent(android.app.WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER);
+            intent.putExtra(android.app.WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
+                new android.content.ComponentName(this,LeafLiveWallpaperService.class));
+            startActivity(intent);
+        }catch(Exception e){
+            try{startActivity(new Intent(android.app.WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER));}
+            catch(Exception ignored){say("Le sélecteur de fonds d'écran animés Android est indisponible.");}
+        }
+    }
+
     private void toggleAutoSimulation(){
         boolean running=getSharedPreferences("leaf_runtime",MODE_PRIVATE).getBoolean("auto_running",false);
         Intent i=new Intent(this,GameRuntimeService.class);i.putExtra("profile_id",activeProfile);
