@@ -6,11 +6,17 @@ on:
 permissions:
   contents: read
 jobs:
-  build:
+  test-and-build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+      - name: Configure native engine tests
+        run: cmake -S engine -B build/host -DLEAF_BUILD_TESTS=ON
+      - name: Compile native engine tests
+        run: cmake --build build/host --parallel 2
+      - name: Run native engine tests
+        run: ctest --test-dir build/host --output-on-failure
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -25,19 +31,33 @@ jobs:
         run: gradle --no-daemon :app:assembleDebug
       - name: Verify game APK
         run: test -s app/build/outputs/apk/debug/app-debug.apk
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Leaf1Game2D-Alpha-0.2.0-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-          retention-days: 30
       - name: Build LeafStudio2D debug APK
         run: gradle --no-daemon :studio:assembleDebug
       - name: Verify editor APK
         run: test -s studio/build/outputs/apk/debug/studio-debug.apk
+      - name: Prepare complete ZIP package
+        run: |
+          mkdir -p dist/Leaf1Game2D-Complet-0.3.0/apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/Leaf1Game2D-Complet-0.3.0/apk/Leaf1Game2D-0.3.0-debug.apk
+          cp studio/build/outputs/apk/debug/studio-debug.apk dist/Leaf1Game2D-Complet-0.3.0/apk/LeafStudio2D-0.2.0-debug.apk
+          git archive --format=zip --output=dist/Leaf1Game2D-Complet-0.3.0/Leaf1Game2D-Sources.zip HEAD
+          cd dist
+          zip -qr Leaf1Game2D-Complet-0.3.0.zip Leaf1Game2D-Complet-0.3.0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Leaf1Game2D-Alpha-0.3.0-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
       - uses: actions/upload-artifact@v4
         with:
           name: LeafStudio2D-Alpha-0.2.0-APK
           path: studio/build/outputs/apk/debug/studio-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Leaf1Game2D-Complet-0.3.0
+          path: dist/Leaf1Game2D-Complet-0.3.0.zip
           if-no-files-found: error
           retention-days: 30
