@@ -255,7 +255,31 @@ public class MainActivity extends Activity {
         TextView result=label("Éléments présents : "+ok+"/"+req.length+"\nL'analyse vérifie les fichiers attendus. Elle ne certifie pas l'exécution des scripts ni la compatibilité de chaque moteur.",13,Color.WHITE);result.setPadding(dp(12),dp(12),dp(12),dp(12));content.addView(result);
         add("Ouvrir les paramètres du projet",()->editFile("project.leaf.json"));
     }
-    private void settings(){shell("PRÉFÉRENCES","LeafStudio2D 0.4.0 • mode hors ligne");add("← Tableau de bord",()->dashboard());add("Changer le dossier SD",()->pickTree());add("Basculer l'explorateur complet",()->{fullExplorer=!fullExplorer;dashboard();});add("À propos / limites",()->new android.app.AlertDialog.Builder(this).setTitle("LeafStudio2D 0.4.0").setMessage("L'éditeur gère les fichiers de projet via le sélecteur Android (SAF), crée les dossiers de données, les trois profils, édite les scènes et exporte/importer des ZIP.\n\nL'aperçu reste une démonstration. L'exécution complète de LeafScript, l'éditeur graphique drag-and-drop, le moteur physique, le débogueur pas-à-pas et la compilation universelle ne sont pas encore intégrés.").setPositiveButton("OK",null).show());}
+    private void settings(){
+        shell("PARAMÈTRES DU JEU","Les réglages sont enregistrés dans les fichiers du projet");
+        add("← Tableau de bord",()->dashboard());
+        add("Modifier les paramètres et statistiques globales",()->editFile("game_settings.json"));
+        add("Modifier les statistiques du profil actif",()->editFile("data/profiles/profile_"+activeProfile+".json"));
+        add("Simulation automatique en arrière-plan",()->toggleAutoSimulation());
+        add("Changer le dossier SD",()->pickTree());
+        add("À propos / fonctionnement du mode fond",()->new android.app.AlertDialog.Builder(this)
+            .setTitle("Paramètres LeafStudio2D")
+            .setMessage("Les paramètres globaux sont dans game_settings.json (numéro d'enveloppe, niveau, santé, expérience, monnaie, production...). Les trois profils sont dans data/profiles/.\\n\\nLa simulation automatique fait progresser certaines données en arrière-plan avec une notification Android. Elle ne peut pas afficher le jeu derrière les autres applications. Pour cela, il faut créer un véritable fond d'écran animé Android (Live Wallpaper), que tu devras activer dans les paramètres Android.")
+            .setPositiveButton("OK",null).show());
+    }
+    private void toggleAutoSimulation(){
+        boolean running=getSharedPreferences("leaf_runtime",MODE_PRIVATE).getBoolean("auto_running",false);
+        Intent i=new Intent(this,GameRuntimeService.class);
+        if(running){
+            stopService(i);
+            getSharedPreferences("leaf_runtime",MODE_PRIVATE).edit().putBoolean("auto_running",false).apply();
+            say("Simulation automatique arrêtée.");
+        }else{
+            if(android.os.Build.VERSION.SDK_INT>=26)startForegroundService(i);else startService(i);
+            getSharedPreferences("leaf_runtime",MODE_PRIVATE).edit().putBoolean("auto_running",true).apply();
+            say("Simulation automatique démarrée : progression des données, sans affichage graphique en fond.");
+        }
+    }
 
     private void copyAsset(Uri uri){
         try{
