@@ -57,3 +57,24 @@ Ce plan distingue les fonctions réellement présentes du cahier des charges cib
 
 ## Politique de publication
 Chaque APK publiée doit indiquer le commit source, le numéro de version, les fonctions implémentées, les fonctions expérimentales et les tests passés. Une compilation réussie ne prouve pas que les fonctionnalités sont complètes.
+
+
+## Mise à jour — éditeur visuel de scènes (23 novembre 2026)
+
+Une première version interactive de l'éditeur visuel a été ajoutée dans `MainActivity`.
+
+Fonctions réellement implémentées dans cette étape :
+- ouverture et lecture de `scenes/world.leafscene` ;
+- affichage d'une zone de scène 2D 480×270 avec grille ;
+- création de nœuds `Rectangle2D` et `Sprite2D` (Sprite2D reste un rectangle de remplacement) ;
+- sélection tactile et déplacement des nœuds ;
+- suppression du nœud sélectionné ;
+- sauvegarde explicite du tableau `root.children` dans le fichier de scène.
+
+Limites actuelles :
+- pas encore de chargement de textures depuis `assets/sprites` ;
+- pas de redimensionnement, rotation, calques visuels, collisions éditables ni caméra ;
+- l'aperçu intégré est un éditeur de données de scène, pas encore le runtime qui exécute le gameplay ;
+- les scènes autres que `world.leafscene` ne sont pas encore sélectionnables depuis cet écran.
+
+Validation à réaliser : compilation Android, ouverture de scène existante, ajout/déplacement/suppression, sauvegarde, fermeture/réouverture et contrôle de conservation des autres champs JSON.
