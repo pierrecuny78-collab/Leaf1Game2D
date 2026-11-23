@@ -16,12 +16,12 @@ import java.util.*;
 import java.util.zip.*;
 
 public class MainActivity extends Activity {
-    private static final int PICK_TREE=501, PICK_ZIP=502, SAVE_ZIP=503;
+    private static final int PICK_TREE=501, PICK_ZIP=502, SAVE_ZIP=503, PICK_ASSET=510, PROJECT_MANAGER=520;
     private static final String PREFS="leafstudio_workspace";
     private LinearLayout root, content;
     private TextView status, currentFile;
     private EditText editor;
-    private DocumentFile storageRoot, projectRoot;
+    private DocumentFile storageRoot, projectsRoot, projectRoot;
     private String activePath="scripts/main.leaf";
     private boolean fullExplorer=false;
     private final LinkedHashMap<String,String> cache=new LinkedHashMap<>();
@@ -58,6 +58,7 @@ public class MainActivity extends Activity {
         shell("LEAF STUDIO 2D","Atelier de création 2D • projets multi-moteurs • Android / PC");
         TextView intro=label("Espace de travail\n"+(projectRoot==null?"Aucun projet SD sélectionné":"Projet : "+projectRoot.getName()),14,Color.WHITE);intro.setPadding(dp(14),dp(10),dp(14),dp(10));content.addView(intro);
         add("📁 Choisir le dossier de la carte SD",()->pickTree());
+        add("🗂 Mes projets : créer / ouvrir / renommer / supprimer",()->startActivityForResult(new Intent(this,ProjectManagerActivity.class),PROJECT_MANAGER));
         add("📦 Importer un projet ZIP",()->pickZip());
         add("📤 Exporter le projet en ZIP",()->exportZip());
         add("▶ Ouvrir l'espace de travail",()->workspace());
@@ -65,6 +66,7 @@ public class MainActivity extends Activity {
         add("🗂 Vue simple / explorateur complet",()->{fullExplorer=!fullExplorer;workspace();});
         add("🎨 Éditeur de scènes et cartes",()->sceneStudio());
         add("🧱 Gestionnaire de ressources et assets",()->assetStudio());
+        add("📜 Scripts par catégories",()->scriptStudio());
         add("🕹 Atelier RPG : héros, classes, objets, ennemis, boss",()->rpgStudio());
         add("🎞 Spritesheets et animations",()->animationStudio());
         add("📜 Quêtes, dialogues et événements",()->questStudio());
@@ -99,12 +101,15 @@ public class MainActivity extends Activity {
                 storageRoot=DocumentFile.fromTreeUri(this,u);getSharedPreferences(PREFS,MODE_PRIVATE).edit().putString("tree_uri",u.toString()).apply();openWorkspace();dashboard();
             }else if(req==PICK_ZIP){if(!ready())return;importZip(u);workspace();}
             else if(req==SAVE_ZIP){writeZip(u);say("ZIP exporté sur le stockage choisi.");}
+            else if(req==PICK_ASSET){if(!ready())return;copyAsset(u);assetStudio();}
+            else if(req==PROJECT_MANAGER){openWorkspace();dashboard();}
         }catch(Exception e){say("Erreur : "+e.getMessage());}
     }
     private void openWorkspace(){
         if(storageRoot==null)return;
-        DocumentFile base=childDir(storageRoot,"LeafStudio2D");projectRoot=childDir(base,"Projects");
-        projectRoot=childDir(projectRoot,"FirstGame");
+        DocumentFile base=childDir(storageRoot,"LeafStudio2D");projectsRoot=childDir(base,"Projects");
+        String selected=getSharedPreferences(PREFS,MODE_PRIVATE).getString("selected_project","FirstGame");
+        projectRoot=childDir(projectsRoot,selected);
         ensureStructure();say("Projet prêt sur le stockage sélectionné.");
     }
     private DocumentFile childDir(DocumentFile p,String n){DocumentFile d=p.findFile(n);return d!=null&&d.isDirectory()?d:p.createDirectory(n);}
@@ -122,8 +127,9 @@ public class MainActivity extends Activity {
     private void createIfMissing(String path,String value)throws Exception{DocumentFile f=find(path,false);if(f==null){f=find(path,true);if(f!=null)writeDoc(f,value);}}
     private void ensureStructure(){
         try{
-            String[] dirs={"scenes","scripts","assets/sprites","assets/tilesets","assets/audio","assets/fonts","data/heroes","data/classes","data/items","data/equipment","data/companions","data/enemies","data/bosses","data/quests","data/dialogues","data/skills","data/recipes","data/biomes","data/buildings","data/decorations","animations","ui","plugins","backups","data/profiles","saves/profile_1","saves/profile_2","saves/profile_3"};
+            String[] dirs={"scenes","scripts","scripts/gameplay","scripts/graphics","scripts/ui","scripts/systems","scripts/ai","scripts/quests","scripts/data","assets/sprites","assets/tilesets","assets/audio","assets/fonts","data/heroes","data/classes","data/items","data/equipment","data/companions","data/enemies","data/bosses","data/quests","data/dialogues","data/skills","data/recipes","data/biomes","data/buildings","data/decorations","animations","ui","plugins","backups","data/profiles","saves/profile_1","saves/profile_2","saves/profile_3"};
             for(String d:dirs)ensureDir(d);
+            createIfMissing("game_settings.json","{\n  \"settings_version\": 1, \"envelope_number\": 1, \"player_level\": 1, \"health\": 100, \"max_health\": 100, \"experience\": 0, \"currency\": 0, \"production_per_minute\": 2, \"auto_simulation\": false, \"background_mode\": \"disabled\"\n}\n");
             createIfMissing("project.leaf.json","{\n  \"format\": \"leaf-project\",\n  \"schema_version\": 1,\n  \"name\": \"FirstGame\",\n  \"engine\": \"LeafEngine2D\",\n  \"entry_scene\": \"scenes/world.leafscene\",\n  \"supported_engines\": [\"LeafEngine2D\", \"Godot\", \"Other\"]\n}\n");
             createIfMissing("scripts/main.leaf","# LeafScript — point d'entrée du projet\nextends Node2D\n\nfunc _ready():\n    print(\"Bienvenue dans LeafStudio2D\")\n");
             createIfMissing("scenes/world.leafscene","{\n  \"scene_format\": \"leaf-scene\", \"format_version\": 1, \"scene_id\": \"world\",\n  \"root\": {\"type\": \"Node2D\", \"name\": \"World\", \"children\": []}\n}\n");
@@ -187,13 +193,45 @@ public class MainActivity extends Activity {
             String before=s.substring(0,pos).trim();String insert=(before.endsWith("[")?"":",")+ "\n    "+item+"\n  ";s=s.substring(0,pos)+insert+s.substring(pos);writeDoc(f,s);say("Objet "+name+" ajouté à world.leafscene.");
         }catch(Exception e){say("Ajout impossible : "+e.getMessage());}
     }
+
+    private void scriptStudio(){
+        if(!ready())return;
+        shell("SCRIPTS DU JEU","Choisis une catégorie pour créer ou modifier les scripts Leaf");
+        add("← Tableau de bord",()->dashboard());
+        String[][] cats={{"Gameplay","scripts/gameplay"},{"Graphismes et affichage","scripts/graphics"},{"Interface et menus","scripts/ui"},{"Systèmes et statistiques","scripts/systems"},{"IA et comportements","scripts/ai"},{"Quêtes et dialogues","scripts/quests"},{"Données et configuration","scripts/data"}};
+        for(String[] cat:cats){
+            final String folder=cat[1],title=cat[0];
+            add("📂 "+title,()->{
+                shell(title,folder);
+                add("← Catégories",()->scriptStudio());
+                add("＋ Nouveau script",()->createCategorizedScript(folder));
+                add("Ouvrir l'explorateur",()->{fullExplorer=true;workspace();});
+                listFiles(directory(folder),folder,1);
+            });
+        }
+    }
+    private DocumentFile directory(String path){
+        DocumentFile f=projectRoot;
+        for(String part:path.split("/")){DocumentFile next=f.findFile(part);if(next==null)next=f.createDirectory(part);f=next;}
+        return f;
+    }
+    private void createCategorizedScript(String folder){
+        EditText input=new EditText(this);input.setSingleLine(true);input.setHint("nom_du_script");
+        new android.app.AlertDialog.Builder(this).setTitle("Créer un script").setView(input).setNegativeButton("Annuler",null).setPositiveButton("Créer",(d,w)->{
+            String n=input.getText().toString().trim().replaceAll("[^A-Za-z0-9_-]","_");if(n.isEmpty())n="nouveau_script";
+            String path=folder+"/"+n+".leaf";
+            try{if(find(path,false)!=null){say("Ce script existe déjà.");return;}createIfMissing(path,"# Script LeafScript du projet\\n");editFile(path);}
+            catch(Exception e){say("Création impossible : "+e.getMessage());}
+        }).show();
+    }
+
     private void assetStudio(){
         if(!ready())return;shell("GESTIONNAIRE D'ASSETS","Images, textures, audio, polices et ressources du jeu");add("← Tableau de bord",()->dashboard());
         add("Importer une image / audio / police",()->pickAnyAsset());
         add("Ouvrir sprites",()->openFolder("assets/sprites"));add("Ouvrir tilesets",()->openFolder("assets/tilesets"));add("Ouvrir audio",()->openFolder("assets/audio"));add("Ouvrir fonts",()->openFolder("assets/fonts"));
         add("Créer fiche de ressource",()->{try{createIfMissing("assets/asset_catalog.json","{\n  \"assets\": []\n}\n");editFile("assets/asset_catalog.json");}catch(Exception e){say(e.getMessage());}});
     }
-    private void pickAnyAsset(){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("*/*");startActivityForResult(i,510);}
+    private void pickAnyAsset(){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("*/*");startActivityForResult(i,PICK_ASSET);}
     private void openFolder(String path){fullExplorer=true;workspace();}
     private void rpgStudio(){
         if(!ready())return;shell("ATELIER RPG","Données structurées pour les systèmes de jeu");add("← Tableau de bord",()->dashboard());
