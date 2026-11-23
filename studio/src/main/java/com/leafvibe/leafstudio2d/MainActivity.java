@@ -3,6 +3,8 @@ package com.leafvibe.leafstudio2d;
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
+import android.database.Cursor;
+import android.provider.OpenableColumns;
 import android.os.Bundle;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -283,14 +285,20 @@ public class MainActivity extends Activity {
 
     private void copyAsset(Uri uri){
         try{
-            String name="asset_"+System.currentTimeMillis();
-            String path="assets/imported/"+name;
-            String type=getContentResolver().getType(uri);
-            if(type!=null&&type.startsWith("image/"))path+=".img";
-            else if(type!=null&&type.startsWith("audio/"))path+=".audio";
-            else path+=".bin";
-            DocumentFile out=find(path,true);InputStream in=getContentResolver().openInputStream(uri);OutputStream os=getContentResolver().openOutputStream(out.getUri(),"wt");
-            byte[] b=new byte[8192];int n;while((n=in.read(b))>0)os.write(b,0,n);in.close();os.close();say("Ressource importée : "+path);
+            String displayName=null;
+            Cursor cursor=getContentResolver().query(uri,new String[]{OpenableColumns.DISPLAY_NAME},null,null,null);
+            if(cursor!=null){try{if(cursor.moveToFirst())displayName=cursor.getString(0);}finally{cursor.close();}}
+            if(displayName==null||displayName.trim().isEmpty())displayName="asset_"+System.currentTimeMillis()+".bin";
+            displayName=displayName.replaceAll("[^A-Za-z0-9._-]","_");
+            if(displayName.length()>100)displayName=displayName.substring(displayName.length()-100);
+            String path="assets/imported/"+displayName;
+            if(find(path,false)!=null){int dot=displayName.lastIndexOf('.');String base=dot>0?displayName.substring(0,dot):displayName;String ext=dot>0?displayName.substring(dot):"";path="assets/imported/"+base+"_imported_"+System.currentTimeMillis()+ext;}
+            DocumentFile out=find(path,true);
+            InputStream in=getContentResolver().openInputStream(uri);
+            OutputStream os=getContentResolver().openOutputStream(out.getUri(),"w");
+            if(in==null||os==null)throw new IOException("Flux de fichier indisponible");
+            byte[] b=new byte[8192];int n;try{while((n=in.read(b))>0)os.write(b,0,n);}finally{in.close();os.close();}
+            say("Ressource importée sans conversion : "+path);
         }catch(Exception e){say("Import de ressource impossible : "+e.getMessage());}
     }
     private String safeZipPath(String raw){
