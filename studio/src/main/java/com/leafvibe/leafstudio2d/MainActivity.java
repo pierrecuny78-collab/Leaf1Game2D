@@ -286,17 +286,58 @@ public class MainActivity extends Activity {
         TextView result=label("Éléments présents : "+ok+"/"+req.length+"\nL'analyse vérifie les fichiers attendus. Elle ne certifie pas l'exécution des scripts ni la compatibilité de chaque moteur.",13,Color.WHITE);result.setPadding(dp(12),dp(12),dp(12),dp(12));content.addView(result);
         add("Ouvrir les paramètres du projet",()->editFile("project.leaf.json"));
     }
+    private org.json.JSONObject loadJsonFile(String path)throws Exception{
+        DocumentFile f=find(path,false);
+        if(f==null)return new org.json.JSONObject();
+        return new org.json.JSONObject(readDoc(f));
+    }
+    private void saveJsonFile(String path,org.json.JSONObject data)throws Exception{
+        DocumentFile f=find(path,true);
+        if(f==null)throw new IOException("Impossible de créer "+path);
+        writeDoc(f,data.toString(2)+"\\n");
+    }
+    private void editNumberSetting(String key,String title,boolean profile){
+        if(!ready())return;
+        String path=profile?"data/profiles/profile_"+activeProfile+".json":"game_settings.json";
+        try{
+            org.json.JSONObject data=loadJsonFile(path);
+            EditText input=new EditText(this);input.setSingleLine(true);input.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL|InputType.TYPE_NUMBER_FLAG_SIGNED);
+            input.setText(String.valueOf(data.opt(key)));
+            new android.app.AlertDialog.Builder(this).setTitle(title).setView(input).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer",(d,w)->{
+                try{
+                    String raw=input.getText().toString().trim();
+                    if(raw.isEmpty())throw new Exception("Valeur vide");
+                    if(raw.contains("."))data.put(key,Double.parseDouble(raw));else data.put(key,Long.parseLong(raw));
+                    if(key.equals("max_health")&&data.optLong("health",0)>data.optLong("max_health",0))data.put("health",data.optLong("max_health",0));
+                    saveJsonFile(path,data);say("Paramètre enregistré : "+key+" → "+raw);
+                }catch(Exception e){say("Valeur invalide : "+e.getMessage());}
+            }).show();
+        }catch(Exception e){say("Lecture impossible : "+e.getMessage());}
+    }
     private void settings(){
-        shell("PARAMÈTRES DU JEU","Les réglages sont enregistrés dans les fichiers du projet");
+        if(!ready())return;
+        shell("PARAMÈTRES DU JEU","Réglages directs • projet "+projectRoot.getName()+" • profil "+activeProfile);
         add("← Tableau de bord",()->dashboard());
-        add("Modifier les paramètres et statistiques globales",()->editFile("game_settings.json"));
-        add("Modifier les statistiques du profil actif",()->editFile("data/profiles/profile_"+activeProfile+".json"));
-        add("Simulation automatique des statistiques",()->toggleAutoSimulation());
-        add("Configurer le fond d’écran animé Leaf",()->configureLiveWallpaper());
+        add("Numéro d'enveloppe",()->editNumberSetting("envelope_number","Numéro d'enveloppe",false));
+        add("Niveau initial",()->editNumberSetting("player_level","Niveau initial",false));
+        add("Santé actuelle",()->editNumberSetting("health","Santé actuelle",false));
+        add("Santé maximale",()->editNumberSetting("max_health","Santé maximale",false));
+        add("Expérience",()->editNumberSetting("experience","Expérience",false));
+        add("Monnaie",()->editNumberSetting("currency","Monnaie",false));
+        add("Production par minute",()->editNumberSetting("production_per_minute","Production par minute",false));
+        divider();
+        add("Modifier les statistiques du profil "+activeProfile,()->profiles());
+        add("Niveau du profil actif",()->editNumberSetting("level","Niveau du profil actif",true));
+        add("XP du profil actif",()->editNumberSetting("experience","XP du profil actif",true));
+        add("Santé du profil actif",()->editNumberSetting("health","Santé du profil actif",true));
+        add("Monnaie du profil actif",()->editNumberSetting("currency","Monnaie du profil actif",true));
+        add("Activer / désactiver la simulation automatique",()->toggleAutoSimulation());
+        add("Choisir / prévisualiser le fond animé Leaf",()->configureLiveWallpaper());
+        add("Modifier le fichier complet game_settings.json",()->editFile("game_settings.json"));
         add("Changer le dossier SD",()->pickTree());
-        add("À propos / fonctionnement du mode fond",()->new android.app.AlertDialog.Builder(this)
-            .setTitle("Paramètres LeafStudio2D")
-            .setMessage("Les paramètres globaux sont dans game_settings.json (numéro d'enveloppe, niveau, santé, expérience, monnaie, production...). Les trois profils sont dans data/profiles/.\\n\\nLa simulation automatique fait progresser certaines données en arrière-plan avec une notification Android. Elle ne peut pas afficher le jeu derrière les autres applications. Pour cela, il faut créer un véritable fond d'écran animé Android (Live Wallpaper), que tu devras activer dans les paramètres Android.")
+        add("À propos des fonds d'écran",()->new android.app.AlertDialog.Builder(this)
+            .setTitle("Fond animé Leaf")
+            .setMessage("Android exige une validation de ta part dans son sélecteur de fonds d'écran. LeafStudio2D ne peut pas changer ton fond d'écran en silence. Le fond Leaf World actuel est une animation de démonstration indépendante : il ne reflète pas encore la scène active du jeu.")
             .setPositiveButton("OK",null).show());
     }
 
