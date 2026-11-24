@@ -78,3 +78,14 @@ Limites actuelles :
 - les scènes autres que `world.leafscene` ne sont pas encore sélectionnables depuis cet écran.
 
 Validation à réaliser : compilation Android, ouverture de scène existante, ajout/déplacement/suppression, sauvegarde, fermeture/réouverture et contrôle de conservation des autres champs JSON.
+
+
+## V2 — première tranche de mise en œuvre
+
+- Icône Android LeafStudio2D ajoutée et référencée dans le manifeste.
+- Manifeste Android normalisé avec de vrais retours à la ligne.
+- Spécification de référence créée : `LEAFSTUDIO2D_VISION_UNIVERSELLE_V2.md`.
+- Gestionnaire de projets : création guidée en quatre étapes (genre, nom, description, confirmation).
+- À la création, génération d'une arborescence de projet autonome, de trois dossiers de profils, d'un manifeste `project.leaf`, d'un catalogue de ressources JSON vide et d'une scène initiale `world.leafscene`.
+
+Validation restante : compilation Android du dernier commit, test de création depuis l'interface, fermeture/réouverture du projet, vérification de chaque fichier via le stockage SAF et test sur appareil réel.
