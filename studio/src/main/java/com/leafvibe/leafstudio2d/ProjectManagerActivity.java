@@ -8,6 +8,9 @@ import android.net.Uri;
 import android.graphics.Color;
 import android.view.Gravity;
 import android.widget.*;
+import android.graphics.BitmapFactory;
+import android.content.ClipData;
+import java.io.InputStream;
 import androidx.documentfile.provider.DocumentFile;
 import java.util.*;
 import java.io.OutputStream;
@@ -17,7 +20,8 @@ public class ProjectManagerActivity extends Activity {
     private static final String PREFS="leafstudio_workspace";
     private LinearLayout list;
     private DocumentFile projects;
-    private String draftGenre="RPG",draftName="",draftDescription="";
+    private String draftGenre="RPG",draftName="",draftDescription="",iconTargetProject="";
+    private static final int PICK_PROJECT_ICON=731;
     private int dp(int n){return (int)(n*getResources().getDisplayMetrics().density+0.5f);}
     private TextView label(String s,int size,int color){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(color);return t;}
     private Button button(String s,Runnable r){Button b=new Button(this);b.setText(s);b.setAllCaps(false);b.setOnClickListener(v->r.run());return b;}
@@ -92,7 +96,14 @@ public class ProjectManagerActivity extends Activity {
         int count=0;for(DocumentFile dir:dirs){if(!dir.isDirectory())continue;count++;final String name=dir.getName();
             LinearLayout card=new LinearLayout(this);card.setOrientation(1);card.setPadding(dp(8),dp(8),dp(8),dp(8));card.setBackgroundColor(0xff1e293b);
             LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.setMargins(0,dp(5),0,dp(5));list.addView(card,cp);
-            card.addView(label((name.equals(selected)?"● ":"")+"📁 "+name,17,Color.WHITE));
+            LinearLayout heading=new LinearLayout(this);heading.setOrientation(0);heading.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            ImageView iconView=new ImageView(this);iconView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            DocumentFile iconFile=null;DocumentFile assetsDir=dir.findFile("assets");DocumentFile iconDir=assetsDir==null?null:assetsDir.findFile("icons");
+            if(iconDir!=null){for(String iconName:new String[]{"project_icon.png","project_icon.jpg","project_icon.webp"}){DocumentFile candidate=iconDir.findFile(iconName);if(candidate!=null&&candidate.isFile()){iconFile=candidate;break;}}}
+            if(iconFile!=null){try(InputStream in=getContentResolver().openInputStream(iconFile.getUri())){android.graphics.Bitmap bitmap=BitmapFactory.decodeStream(in);if(bitmap!=null)iconView.setImageBitmap(bitmap);}}else iconView.setImageResource(android.R.drawable.ic_menu_gallery);
+            LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(dp(52),dp(52));ip.rightMargin=dp(10);heading.addView(iconView,ip);
+            heading.addView(label((name.equals(selected)?"● ":"")+name,17,Color.WHITE),new LinearLayout.LayoutParams(0,-2,1));card.addView(heading);
+            card.addView(button("🖼 Personnaliser l'icône (PNG / JPG / WebP)",()->pickProjectIcon(name)));
             card.addView(label(name.equals(selected)?"Projet actuellement sélectionné":"Projet indépendant",11,0xff94a3b8));
             card.addView(button("Ouvrir ce projet",()->{getSharedPreferences(PREFS,MODE_PRIVATE).edit().putString("selected_project",name).apply();setResult(RESULT_OK);finish();}));
             card.addView(button("Renommer",()->rename(dir)));
@@ -118,5 +129,32 @@ public class ProjectManagerActivity extends Activity {
         }).show();
     }
     private boolean deleteTree(DocumentFile f){if(f.isDirectory()){for(DocumentFile c:f.listFiles())if(!deleteTree(c))return false;}return f.delete();}
+    @Override protected void onActivityResult(int request,int result,Intent data){
+        super.onActivityResult(request,result,data);
+        if(request!=PICK_PROJECT_ICON||result!=RESULT_OK||data==null||data.getData()==null)return;
+        try{
+            DocumentFile dir=projects.findFile(iconTargetProject);
+            if(dir==null||!dir.isDirectory())throw new Exception("Projet introuvable");
+            DocumentFile assets=child(dir,"assets");DocumentFile icons=child(assets,"icons");
+            String mime=getContentResolver().getType(data.getData());String ext="png";
+            if(mime!=null&&mime.equalsIgnoreCase("image/jpeg"))ext="jpg";
+            else if(mime!=null&&mime.equalsIgnoreCase("image/webp"))ext="webp";
+            else if(mime!=null&&!mime.equalsIgnoreCase("image/png"))throw new Exception("Format non pris en charge : PNG, JPG ou WebP");
+            for(String old:new String[]{"project_icon.png","project_icon.jpg","project_icon.webp"}){DocumentFile existing=icons.findFile(old);if(existing!=null)existing.delete();}
+            DocumentFile target=icons.createFile(mime==null?"image/png":mime,"project_icon."+ext);
+            if(target==null)throw new Exception("Création de l'icône impossible");
+            try(InputStream in=getContentResolver().openInputStream(data.getData());OutputStream out=getContentResolver().openOutputStream(target.getUri(),"wt")){
+                if(in==null||out==null)throw new Exception("Lecture ou écriture impossible");
+                byte[] buffer=new byte[8192];int n;while((n=in.read(buffer))>0)out.write(buffer,0,n);
+            }
+            toast("Icône du projet mise à jour");refresh();
+        }catch(Exception e){toast("Icône non importée : "+e.getMessage());}
+    }
+    private void pickProjectIcon(String project){
+        iconTargetProject=project;
+        Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("image/*");
+        i.putExtra(Intent.EXTRA_MIME_TYPES,new String[]{"image/png","image/jpeg","image/webp"});
+        startActivityForResult(i,PICK_PROJECT_ICON);
+    }
     private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_LONG).show();}
 }
