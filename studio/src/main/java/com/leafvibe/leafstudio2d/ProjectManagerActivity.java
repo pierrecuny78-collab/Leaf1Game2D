@@ -75,11 +75,15 @@ public class ProjectManagerActivity extends Activity {
     private void createProjectFiles(){
         try{
             DocumentFile dir=projects.createDirectory(draftName);if(dir==null)throw new Exception("Création du dossier impossible");
-            String[] folders={"scenes","scripts","assets","assets/characters","assets/enemies","assets/environments","assets/ui","assets/icons","assets/audio","prefabs","animations","effects","data","plugins","saves","saves/profile_1","saves/profile_2","saves/profile_3","exports","backup"};
+            String[] folders={"scenes","scripts","assets","assets/characters","assets/enemies","assets/environments","assets/ui","assets/icons","assets/audio","prefabs","animations","effects","data","plugins","saves","saves/profile_1","saves/profile_2","saves/profile_3","data/profiles","exports","backup"};
             for(String folder:folders){DocumentFile current=dir;for(String part:folder.split("/")){DocumentFile next=current.findFile(part);if(next==null)next=current.createDirectory(part);if(next==null)throw new Exception("Création impossible : "+folder);current=next;}}
             org.json.JSONObject project=new org.json.JSONObject();project.put("format","leaf-project");project.put("format_version",1);project.put("name",draftName);project.put("genre",draftGenre);project.put("description",draftDescription);project.put("created_at",System.currentTimeMillis());project.put("engine","LeafEngine2D");
             writeText(dir,"project.leaf",project.toString(2));
             DocumentFile data=dir.findFile("data");org.json.JSONObject resources=new org.json.JSONObject();resources.put("resources",new org.json.JSONArray());writeText(data,"resources.json",resources.toString(2));
+            DocumentFile profiles=dir.findFile("profiles");
+            for(int profile=1;profile<=3;profile++){org.json.JSONObject save=new org.json.JSONObject();save.put("profile_id",profile);save.put("display_name","Profil "+profile);save.put("level",1);save.put("experience",0);save.put("health",100);save.put("currency",0);save.put("inventory",new org.json.JSONArray());save.put("characters",new org.json.JSONArray());save.put("quests",new org.json.JSONArray());writeText(profiles,"profile_"+profile+".json",save.toString(2));}
+            DocumentFile scripts=dir.findFile("scripts");writeText(scripts,"main.leaf","# Point d'entrée du projet "+draftName+"\\n# Les scripts Leaf sont des données/logiques déclaratives tant que le runtime correspondant n'est pas activé.\\n");
+            writeText(dir,"game_settings.json",new org.json.JSONObject().put("player_level",1).put("health",100).put("max_health",100).put("experience",0).put("currency",0).put("envelope_number",1).toString(2));
             DocumentFile scenes=dir.findFile("scenes");org.json.JSONObject scene=new org.json.JSONObject();scene.put("format","leaf-scene");scene.put("version",1);org.json.JSONObject root=new org.json.JSONObject();root.put("name","Root");root.put("type","Node2D");root.put("children",new org.json.JSONArray());scene.put("root",root);writeText(scenes,"world.leafscene",scene.toString(2));
             getSharedPreferences(PREFS,MODE_PRIVATE).edit().putString("selected_project",draftName).apply();
             toast("Projet "+draftName+" créé avec son squelette "+draftGenre);refresh();
