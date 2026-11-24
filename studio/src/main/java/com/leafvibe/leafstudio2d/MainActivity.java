@@ -355,6 +355,32 @@ public class MainActivity extends Activity {
         add("Importer une image / audio / police",()->pickAnyAsset());
         add("Ouvrir sprites",()->openFolder("assets/sprites"));add("Ouvrir tilesets",()->openFolder("assets/tilesets"));add("Ouvrir audio",()->openFolder("assets/audio"));add("Ouvrir fonts",()->openFolder("assets/fonts"));
         add("Créer fiche de ressource",()->{try{createIfMissing("assets/asset_catalog.json","{\n  \"assets\": []\n}\n");editFile("assets/asset_catalog.json");}catch(Exception e){say(e.getMessage());}});
+        add("＋ Ajouter une ressource au jeu",()->createResourceDefinition());
+        add("Modifier le catalogue JSON des ressources",()->{try{createIfMissing("data/resources.json","{\\n  \\"resources\\": []\\n}\\n");editFile("data/resources.json");}catch(Exception e){say(e.getMessage());}});
+    }
+    private void createResourceDefinition(){
+        if(!ready())return;
+        LinearLayout form=vertical();form.setPadding(dp(8),dp(4),dp(8),dp(4));
+        EditText name=new EditText(this);name.setHint("Nom (ex. Cristal lunaire)");form.addView(name);
+        EditText kind=new EditText(this);kind.setHint("Catégorie (monnaie, minerai, potion...)");form.addView(kind);
+        EditText quantity=new EditText(this);quantity.setHint("Quantité initiale");quantity.setInputType(InputType.TYPE_CLASS_NUMBER);quantity.setText("0");form.addView(quantity);
+        EditText rarity=new EditText(this);rarity.setHint("Rareté (commun, rare, épique...)");form.addView(rarity);
+        EditText description=new EditText(this);description.setHint("Description");form.addView(description);
+        new android.app.AlertDialog.Builder(this).setTitle("Nouvelle ressource").setView(form)
+            .setNegativeButton("Annuler",null).setPositiveButton("Ajouter",(d,w)->{
+                try{
+                    String n=name.getText().toString().trim(),k=kind.getText().toString().trim();
+                    if(n.isEmpty()||k.isEmpty())throw new Exception("Le nom et la catégorie sont obligatoires");
+                    int q=Integer.parseInt(quantity.getText().toString().trim());
+                    org.json.JSONObject root=loadJsonFile("data/resources.json");
+                    org.json.JSONArray arr=root.optJSONArray("resources");if(arr==null)arr=new org.json.JSONArray();
+                    String id=n.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]+","_").replaceAll("^_|_$","");
+                    for(int i=0;i<arr.length();i++)if(id.equals(arr.optJSONObject(i).optString("id")))throw new Exception("Cette ressource existe déjà");
+                    org.json.JSONObject item=new org.json.JSONObject();item.put("id",id);item.put("name",n);item.put("category",k);item.put("quantity",q);item.put("rarity",rarity.getText().toString().trim());item.put("description",description.getText().toString().trim());item.put("icon","");
+                    arr.put(item);root.put("resources",arr);saveJsonFile("data/resources.json",root);
+                    say("Ressource ajoutée : "+n);
+                }catch(Exception e){say("Ressource non ajoutée : "+e.getMessage());}
+            }).show();
     }
     private void pickAnyAsset(){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("*/*");startActivityForResult(i,PICK_ASSET);}
     private void openFolder(String path){fullExplorer=true;workspace();}
