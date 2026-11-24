@@ -375,7 +375,7 @@ public class MainActivity extends Activity {
     }
     private void analyzer(){
         if(!ready())return;shell("ANALYSEUR ET CONSOLE","Contrôles de structure, ressources et compatibilité");add("← Tableau de bord",()->dashboard());
-        String[] req={"project.leaf.json","scenes/world.leafscene","scripts/main.leaf","data/profiles/profile_1.json","data/profiles/profile_2.json","data/profiles/profile_3.json","assets/sprites","assets/audio","animations"};
+        String[] req={"project.leaf","scenes/world.leafscene","scripts/main.leaf","data/profiles/profile_1.json","data/profiles/profile_2.json","data/profiles/profile_3.json","assets/icons","assets/audio","animations"};
         int ok=0;for(String p:req){DocumentFile f=find(p,false);boolean exists=f!=null;if(exists)ok++;TextView t=label((exists?"✓ ":"✗ ")+p,13,exists?0xff86efac:0xfffca5a5);t.setPadding(dp(12),dp(6),dp(8),dp(6));content.addView(t);}
         TextView result=label("Éléments présents : "+ok+"/"+req.length+"\nL'analyse vérifie les fichiers attendus. Elle ne certifie pas l'exécution des scripts ni la compatibilité de chaque moteur.",13,Color.WHITE);result.setPadding(dp(12),dp(12),dp(12),dp(12));content.addView(result);
         add("Ouvrir les paramètres du projet",()->editFile("project.leaf.json"));
