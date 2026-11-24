@@ -2,70 +2,143 @@ package com.leafvibe.leafstudio2d;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.net.Uri;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Color;
 import android.view.View;
-import android.os.Handler;
-import android.os.Looper;
+import android.widget.TextView;
+import android.view.Gravity;
+import androidx.documentfile.provider.DocumentFile;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
 
-/** Small built-in runtime preview. Full LeafScript execution is a later engine milestone. */
+/**
+ * Project scene preview. This deliberately loads the selected project's own scene;
+ * it does not pretend to execute LeafScript until the interpreter is available.
+ */
 public class GameActivity extends Activity {
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         getWindow().setStatusBarColor(Color.rgb(20, 38, 30));
         getWindow().setNavigationBarColor(Color.rgb(20, 38, 30));
-        setContentView(new WorldPreview(this));
+        try {
+            String treeValue = getIntent().getStringExtra("storage_tree_uri");
+            String projectName = getIntent().getStringExtra("project_name");
+            if (treeValue == null || projectName == null || projectName.trim().isEmpty()) {
+                throw new Exception("Aucun projet sélectionné. Reviens dans LeafStudio2D et ouvre un projet.");
+            }
+            DocumentFile tree = DocumentFile.fromTreeUri(this, Uri.parse(treeValue));
+            DocumentFile app = child(tree, "LeafStudio2D");
+            DocumentFile projects = child(app, "Projects");
+            DocumentFile project = projects == null ? null : projects.findFile(projectName);
+            if (project == null || !project.isDirectory()) throw new Exception("Le dossier du projet sélectionné est introuvable.");
+            DocumentFile manifest = project.findFile("project.leaf.json");
+            if (manifest == null) manifest = project.findFile("project.leaf");
+            if (manifest == null) throw new Exception("Manifest du projet absent (project.leaf.json ou project.leaf).");
+            JSONObject config = new JSONObject(read(manifest));
+            String scenePath = config.optString("entry_scene", "scenes/world.leafscene");
+            DocumentFile sceneFile = find(project, scenePath);
+            if (sceneFile == null || !sceneFile.isFile()) throw new Exception("Scène d'entrée introuvable : " + scenePath);
+            JSONObject scene = new JSONObject(read(sceneFile));
+            JSONObject root = scene.optJSONObject("root");
+            if (root == null) throw new Exception("La scène ne contient pas de nœud root.");
+            JSONArray nodes = root.optJSONArray("children");
+            if (nodes == null) nodes = new JSONArray();
+            setContentView(new ProjectScenePreview(projectName, scenePath, nodes));
+        } catch (Exception e) {
+            TextView error = new TextView(this);
+            error.setText("Impossible d'ouvrir le projet\n\n" + e.getMessage());
+            error.setTextColor(Color.WHITE);
+            error.setTextSize(16);
+            error.setGravity(Gravity.CENTER);
+            error.setPadding(32, 32, 32, 32);
+            error.setBackgroundColor(0xff0f172a);
+            setContentView(error);
+        }
     }
 
-    private static final class WorldPreview extends View {
-        private final Paint p = new Paint();
-        private final Handler handler = new Handler(Looper.getMainLooper());
-        private long started = System.currentTimeMillis();
-        private float heroX = 0;
-        private final Runnable frame = new Runnable() {
-            @Override public void run() {
-                heroX += 3.0f;
-                if (getWidth() > 0 && heroX > getWidth() + 40) heroX = -40;
-                invalidate();
-                handler.postDelayed(this, 120);
-            }
-        };
+    private DocumentFile child(DocumentFile parent, String name) {
+        return parent == null ? null : parent.findFile(name);
+    }
 
-        WorldPreview(Activity context) { super(context); setLayerType(View.LAYER_TYPE_SOFTWARE, null); }
-        private void rect(Canvas c, int color, float x, float y, float w, float h) {
-            p.setColor(color); c.drawRect(x, y, x+w, y+h, p);
+    private DocumentFile find(DocumentFile root, String path) {
+        if (root == null || path == null || path.trim().isEmpty() || path.startsWith("/") || path.contains("..")) return null;
+        DocumentFile current = root;
+        for (String part : path.split("/")) {
+            if (part.isEmpty()) return null;
+            current = current.findFile(part);
+            if (current == null) return null;
         }
-        @Override protected void onDraw(Canvas c) {
-            super.onDraw(c);
-            float sx = getWidth() / 480f, sy = getHeight() / 270f;
-            c.save(); c.scale(sx, sy);
-            rect(c, 0xFF87C7E8, 0, 0, 480, 270);
-            rect(c, 0xFF6EAA55, 0, 175, 480, 95);
-            rect(c, 0xFF4D843F, 0, 220, 480, 50);
-            // Distant hills and a pixel village.
-            rect(c, 0xFF6B9B61, 25, 115, 115, 65);
-            rect(c, 0xFF6B9B61, 300, 105, 145, 75);
-            rect(c, 0xFF9A6747, 65, 135, 65, 55);
-            rect(c, 0xFF70432F, 55, 125, 85, 15);
-            rect(c, 0xFFFFD66B, 90, 155, 14, 35);
-            rect(c, 0xFF9A6747, 175, 145, 55, 45);
-            rect(c, 0xFF70432F, 168, 135, 70, 14);
-            rect(c, 0xFF6A4C93, 330, 135, 60, 55);
-            rect(c, 0xFF4A356E, 320, 125, 80, 15);
-            // Animated hero and slime.
-            rect(c, 0xFF2C3E50, heroX, 176, 18, 24);
-            rect(c, 0xFFFFC99B, heroX+3, 166, 12, 12);
-            rect(c, 0xFF4B78C2, heroX+2, 190, 14, 12);
-            float slimeX = 255 + (float)Math.sin((System.currentTimeMillis()-started)/700.0)*28;
-            rect(c, 0xFF64D98B, slimeX, 185, 25, 17);
-            rect(c, Color.WHITE, slimeX+6, 190, 4, 4);
-            rect(c, Color.WHITE, slimeX+16, 190, 4, 4);
-            p.setColor(Color.WHITE); p.setTextSize(13); c.drawText("BRUMEF EUILLE  •  MONDE VIVANT", 12, 22, p);
-            p.setTextSize(10); c.drawText("Aperçu LeafEngine2D • prototype", 12, 38, p);
-            c.restore();
+        return current;
+    }
+
+    private String read(DocumentFile file) throws Exception {
+        try (InputStream in = getContentResolver().openInputStream(file.getUri());
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            if (in == null) throw new Exception("Lecture impossible : " + file.getName());
+            byte[] buffer = new byte[8192];
+            int n;
+            while ((n = in.read(buffer)) > 0) out.write(buffer, 0, n);
+            return out.toString("UTF-8");
         }
-        @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); handler.post(frame); }
-        @Override protected void onDetachedFromWindow() { handler.removeCallbacks(frame); super.onDetachedFromWindow(); }
+    }
+
+    private final class ProjectScenePreview extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final String projectName;
+        private final String scenePath;
+        private final JSONArray nodes;
+
+        ProjectScenePreview(String name, String path, JSONArray sceneNodes) {
+            super(GameActivity.this);
+            projectName = name;
+            scenePath = path;
+            nodes = sceneNodes;
+            setBackgroundColor(0xff172638);
+        }
+
+        private int parseColor(String value) {
+            try { return Color.parseColor(value); }
+            catch (Exception ignored) { return 0xff67c587; }
+        }
+
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            float sx = getWidth() / 480f;
+            float sy = getHeight() / 270f;
+            canvas.save();
+            canvas.scale(sx, sy);
+            paint.setColor(0xff172638);
+            canvas.drawRect(0, 0, 480, 270, paint);
+            paint.setColor(0xff29445b);
+            paint.setStrokeWidth(1);
+            for (int x = 0; x <= 480; x += 24) canvas.drawLine(x, 0, x, 270, paint);
+            for (int y = 0; y <= 270; y += 24) canvas.drawLine(0, y, 480, y, paint);
+            for (int i = 0; i < nodes.length(); i++) {
+                JSONObject node = nodes.optJSONObject(i);
+                if (node == null || !node.optBoolean("visible", true)) continue;
+                JSONArray position = node.optJSONArray("position");
+                float x = position != null ? (float) position.optDouble(0, 24) : (float) node.optDouble("x", 24);
+                float y = position != null ? (float) position.optDouble(1, 32) : (float) node.optDouble("y", 32);
+                float width = (float) node.optDouble("width", node.optDouble("size", 32));
+                float height = (float) node.optDouble("height", node.optDouble("size", 32));
+                paint.setColor(parseColor(node.optString("color", "#67C587")));
+                canvas.drawRect(x, y, x + width, y + height, paint);
+                paint.setColor(Color.WHITE);
+                paint.setTextSize(9);
+                canvas.drawText(node.optString("name", node.optString("type", "Node")), x + 2, y + height + 10, paint);
+            }
+            paint.setColor(Color.WHITE);
+            paint.setTextSize(13);
+            canvas.drawText(projectName + " • " + nodes.length() + " objet(s)", 10, 18, paint);
+            paint.setTextSize(9);
+            paint.setColor(0xffb8c7d8);
+            canvas.drawText("Aperçu de la scène : " + scenePath, 10, 33, paint);
+            canvas.drawText("Les scripts Leaf ne sont pas encore exécutés par cet aperçu.", 10, 47, paint);
+            canvas.restore();
+        }
     }
 }
