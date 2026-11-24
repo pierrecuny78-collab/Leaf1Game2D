@@ -57,27 +57,30 @@ public class MainActivity extends Activity {
     private void add(String text,Runnable action){content.addView(btn(text,action),new LinearLayout.LayoutParams(-1,dp(48)));}
     private void divider(){View v=new View(this);v.setBackgroundColor(0xff334155);content.addView(v,new LinearLayout.LayoutParams(-1,dp(1)));}
     private void dashboard(){
-        shell("LEAF STUDIO 2D","Atelier de création 2D • projets multi-moteurs • Android / PC");
-        TextView intro=label("Espace de travail\n"+(projectRoot==null?"Aucun projet SD sélectionné":"Projet : "+projectRoot.getName()),14,Color.WHITE);intro.setPadding(dp(14),dp(10),dp(14),dp(10));content.addView(intro);
-        add("📁 Choisir le dossier de la carte SD",()->pickTree());
-        add("🗂 Mes projets : créer / ouvrir / renommer / supprimer",()->startActivityForResult(new Intent(this,ProjectManagerActivity.class),PROJECT_MANAGER));
-        add("📦 Importer un projet ZIP",()->pickZip());
-        add("📤 Exporter le projet en ZIP",()->exportZip());
-        add("▶ Ouvrir l'espace de travail",()->workspace());
+        shell("LEAF STUDIO 2D","Atelier de création 2D • hors ligne • projets autonomes");
+        LinearLayout quick=horizontal();quick.setPadding(dp(10),dp(4),dp(10),dp(8));
+        Button library=btn("📦 APK",()->startActivity(new Intent(this,GameLibraryActivity.class)));
+        Button run=btn("▶",()->startActivity(new Intent(this,GameActivity.class)));
+        run.setTextSize(18);run.setMinWidth(dp(52));
+        quick.addView(library,new LinearLayout.LayoutParams(0,dp(44),1));
+        LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(dp(64),dp(44));rp.leftMargin=dp(8);quick.addView(run,rp);
+        content.addView(quick);
+        TextView intro=label("Mes créations\\n"+(projectRoot==null?"Aucun projet sélectionné":"Projet : "+projectRoot.getName()),17,Color.WHITE);
+        intro.setPadding(dp(14),dp(12),dp(14),dp(12));content.addView(intro);
+        add("＋ Créer / ouvrir / organiser mes projets",()->startActivityForResult(new Intent(this,ProjectManagerActivity.class),PROJECT_MANAGER));
+        add("📁 Choisir le dossier de stockage (carte SD)",()->pickTree());
+        add("▶ Ouvrir l'éditeur",()->workspace());
+        add("📦 Importer ou exporter un projet ZIP",()->{if(!ready()){pickTree();return;}new android.app.AlertDialog.Builder(this).setTitle("Projets ZIP").setItems(new String[]{"Importer un ZIP","Exporter le projet ouvert"},(d,w)->{if(w==0)pickZip();else exportZip();}).show();});
         divider();
-        add("🗂 Vue simple / explorateur complet",()->{fullExplorer=!fullExplorer;workspace();});
-        add("🎨 Éditeur de scènes et cartes",()->sceneStudio());
-        add("🧱 Gestionnaire de ressources et assets",()->assetStudio());
-        add("📜 Scripts par catégories",()->scriptStudio());
-        add("🕹 Atelier RPG : héros, classes, objets, ennemis, boss",()->rpgStudio());
-        add("🎞 Spritesheets et animations",()->animationStudio());
-        add("📜 Quêtes, dialogues et événements",()->questStudio());
-        add("🧩 Logique visuelle et extensions",()->logicStudio());
-        add("🧪 Analyseur de projet et console",()->analyzer());
-        add("👤 Profils et sauvegardes (3)",()->profiles());
-        add("🎮 Bibliothèque des APK",()->startActivity(new Intent(this,GameLibraryActivity.class)));
-        add("▶ Aperçu de démonstration",()->startActivity(new Intent(this,GameActivity.class)));
-        add("⚙ Préférences et informations",()->settings());
+        add("🎨 Scènes et cartes",()->sceneStudio());
+        add("🧱 Ressources et assets",()->assetStudio());
+        add("📜 Scripts et logique",()->scriptStudio());
+        add("🕹 Atelier RPG",()->rpgStudio());
+        add("🎞 Animations et effets",()->animationStudio());
+        add("📚 Quêtes, dialogues et événements",()->questStudio());
+        add("🧪 Analyseur et console",()->analyzer());
+        add("👤 Profils et sauvegardes",()->profiles());
+        add("⚙ Préférences",()->settings());
     }
 
     private void pickTree(){
