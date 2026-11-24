@@ -1,5 +1,8 @@
 # LeafStudio2D — plan d'intégration exécutable
 
+> Référence exhaustive des demandes : [LEAFSTUDIO2D_MASTER_FEATURE_BACKLOG.md](LEAFSTUDIO2D_MASTER_FEATURE_BACKLOG.md). Ce cahier maître rassemble les exigences UI/UX, création, stockage, éditeurs, runtime, RPG, plugins, intégrations Leaf* et tests d'acceptation. Toute livraison doit mettre à jour les états dans les deux documents.
+
+
 Ce plan distingue les fonctions réellement présentes du cahier des charges cible. Ne pas annoncer une capacité comme disponible tant que son test d'acceptation n'est pas passé sur Android physique.
 
 ## État constaté dans le code actuel
