@@ -25,6 +25,7 @@ public class MainActivity extends Activity {
     private EditText editor;
     private DocumentFile storageRoot, projectsRoot, projectRoot;
     private String activePath="scripts/main.leaf";
+    private String currentScreenTitle="";
     private boolean fullExplorer=false;
     private final LinkedHashMap<String,String> cache=new LinkedHashMap<>();
     private int activeProfile=1;
@@ -47,6 +48,7 @@ public class MainActivity extends Activity {
     }
 
     private void shell(String title,String subtitle){
+        currentScreenTitle=title;
         root=vertical();root.setBackgroundColor(0xff0f172a);
         TextView h=label(title,21,Color.WHITE);h.setTypeface(Typeface.DEFAULT_BOLD);h.setPadding(dp(14),dp(12),dp(8),dp(3));root.addView(h);
         TextView sub=label(subtitle,12,0xff9fb3c8);sub.setPadding(dp(14),0,dp(8),dp(10));root.addView(sub);
@@ -56,6 +58,20 @@ public class MainActivity extends Activity {
     }
     private void add(String text,Runnable action){content.addView(btn(text,action),new LinearLayout.LayoutParams(-1,dp(48)));}
     private void divider(){View v=new View(this);v.setBackgroundColor(0xff334155);content.addView(v,new LinearLayout.LayoutParams(-1,dp(1)));}
+    @Override public void onBackPressed(){
+        // Les ateliers sont des vues internes à cette Activity : le retour Android
+        // doit revenir à l'écran précédent au lieu de fermer l'application.
+        if("ÉDITEUR DE FICHIER".equals(currentScreenTitle)){
+            editor=null;
+            workspace();
+        }else if(!"LEAF STUDIO 2D".equals(currentScreenTitle)){
+            editor=null;
+            dashboard();
+        }else{
+            super.onBackPressed();
+        }
+    }
+
     private void dashboard(){
         shell("LEAF STUDIO 2D","Atelier de création 2D • hors ligne • projets autonomes");
         LinearLayout quick=horizontal();quick.setPadding(dp(10),dp(4),dp(10),dp(8));
@@ -156,7 +172,6 @@ public class MainActivity extends Activity {
         add("Basculer vue simple / complète",()->{fullExplorer=!fullExplorer;workspace();});
         currentFile=label("Fichiers du projet",13,0xff7dd3fc);content.addView(currentFile);
         listFiles(projectRoot,"",0);
-        if(editor!=null){content.addView(editor,new LinearLayout.LayoutParams(-1,dp(260)));}
     }
     private void listFiles(DocumentFile dir,String prefix,int depth){
         DocumentFile[] fs=dir.listFiles();Arrays.sort(fs,(a,b)->a.getName().compareToIgnoreCase(b.getName()));
