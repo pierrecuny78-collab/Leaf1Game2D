@@ -76,7 +76,7 @@ public class MainActivity extends Activity {
         shell("LEAF STUDIO 2D","Atelier de création 2D • hors ligne • projets autonomes");
         LinearLayout quick=horizontal();quick.setPadding(dp(10),dp(4),dp(10),dp(8));
         Button library=btn("📦 APK",()->startActivity(new Intent(this,GameLibraryActivity.class)));
-        Button run=btn("▶",()->startActivity(new Intent(this,GameActivity.class)));
+        Button run=btn("▶",()->launchSelectedProject());
         run.setTextSize(18);run.setMinWidth(dp(52));
         quick.addView(library,new LinearLayout.LayoutParams(0,dp(44),1));
         LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(dp(64),dp(44));rp.leftMargin=dp(8);quick.addView(run,rp);
@@ -86,7 +86,7 @@ public class MainActivity extends Activity {
         add("＋ Créer / ouvrir / organiser mes projets",()->startActivityForResult(new Intent(this,ProjectManagerActivity.class),PROJECT_MANAGER));
         add("📁 Choisir le dossier de stockage (carte SD)",()->pickTree());
         add("▶ Ouvrir l'éditeur",()->workspace());
-        add("📦 Importer ou exporter un projet ZIP",()->{if(!ready()){pickTree();return;}new android.app.AlertDialog.Builder(this).setTitle("Projets ZIP").setItems(new String[]{"Importer un ZIP","Exporter le projet ouvert"},(d,w)->{if(w==0)pickZip();else exportZip();}).show();});
+        add("📦 Importer ou exporter un projet ZIP",()->{if(!ready()){pickTree();return;}new android.app.AlertDialog.Builder(this).setTitle("Projets ZIP").setItems(new String[]{"Importer un ZIP","Exporter le projet ouvert"},(d,w)->{if(w==0)new android.app.AlertDialog.Builder(this).setTitle("Remplacer les fichiers existants ?").setMessage("Les fichiers du ZIP seront placés directement dans le dossier du projet. Si un fichier porte déjà le même chemin, son contenu sera remplacé. Aucun fichier _imported_ ne sera créé. Exporte d’abord une sauvegarde si nécessaire.").setNegativeButton("Annuler",null).setPositiveButton("Continuer",(x,y)->pickZip()).show();else exportZip();}).show();});
         divider();
         add("🎨 Scènes et cartes",()->sceneStudio());
         add("🧱 Ressources et assets",()->assetStudio());
@@ -128,15 +128,28 @@ public class MainActivity extends Activity {
         }catch(Exception e){say("Erreur : "+e.getMessage());}
     }
     private void openWorkspace(){
+        projectRoot=null;
         if(storageRoot==null)return;
-        DocumentFile base=childDir(storageRoot,"LeafStudio2D");projectsRoot=childDir(base,"Projects");
-        String selected=getSharedPreferences(PREFS,MODE_PRIVATE).getString("selected_project","FirstGame");
-        projectRoot=childDir(projectsRoot,selected);
-        ensureStructure();say("Projet prêt sur le stockage sélectionné.");
+        DocumentFile base=storageRoot.findFile("LeafStudio2D");
+        projectsRoot=base==null?null:base.findFile("Projects");
+        String selected=getSharedPreferences(PREFS,MODE_PRIVATE).getString("selected_project","");
+        if(projectsRoot!=null&&selected!=null&&!selected.trim().isEmpty()){
+            DocumentFile candidate=projectsRoot.findFile(selected);
+            if(candidate!=null&&candidate.isDirectory())projectRoot=candidate;
+        }
+        say(projectRoot==null?"Aucun projet ouvert : choisis un projet existant.":"Projet ouvert directement depuis son dossier : "+projectRoot.getName());
+    }
+    private void launchSelectedProject(){
+        if(!ready())return;
+        if(storageRoot==null){say("Dossier de stockage indisponible. Rechoisis la carte SD.");return;}
+        Intent intent=new Intent(this,GameActivity.class);
+        intent.putExtra("storage_tree_uri",storageRoot.getUri().toString());
+        intent.putExtra("project_name",projectRoot.getName());
+        startActivity(intent);
     }
     private DocumentFile childDir(DocumentFile p,String n){DocumentFile d=p.findFile(n);return d!=null&&d.isDirectory()?d:p.createDirectory(n);}
     private DocumentFile childFile(DocumentFile p,String n,String mime){DocumentFile f=p.findFile(n);return f!=null&&f.isFile()?f:p.createFile(mime,n);}
-    private boolean ready(){if(projectRoot==null){say("Choisis d'abord le dossier de la carte SD.");return false;}return true;}
+    private boolean ready(){if(projectRoot==null||!projectRoot.exists()||!projectRoot.isDirectory()){say("Aucun projet valide sélectionné. Choisis ou crée un projet dans le gestionnaire.");return false;}return true;}
     private void ensureDir(String path){DocumentFile p=projectRoot;for(String s:path.split("/"))p=childDir(p,s);}
     private DocumentFile find(String path,boolean create){
         if(projectRoot==null)return null;String[] parts=path.split("/");DocumentFile p=projectRoot;
@@ -166,7 +179,7 @@ public class MainActivity extends Activity {
     private String profileTemplate(int n){return "{\n  \"profile_id\": "+n+",\n  \"player_name\": \"Joueur "+n+"\",\n  \"level\": 1, \"experience\": 0, \"health\": 100, \"max_health\": 100,\n  \"stamina\": 100, \"currency\": 0, \"play_time_seconds\": 0,\n  \"inventory\": [], \"equipment\": {}, \"unlocked_areas\": [], \"completed_quests\": [],\n  \"created_at\": \"\", \"updated_at\": \"\"\n}\n";}
 
     private void workspace(){
-        if(!ready())return;ensureStructure();shell("ESPACE DE TRAVAIL","Vue "+(fullExplorer?"Explorateur complet":"Simple")+" • "+projectRoot.getName());
+        if(!ready())return;shell("ESPACE DE TRAVAIL","Vue "+(fullExplorer?"Explorateur complet":"Simple")+" • "+projectRoot.getName());
         add("← Tableau de bord",()->dashboard());add("＋ Nouveau script",()->{String p="scripts/script_"+System.currentTimeMillis()+".leaf";try{createIfMissing(p,"# Nouveau script LeafScript\n");editFile(p);}catch(Exception e){say(e.getMessage());}});
         add("Enregistrer le fichier ouvert",()->saveEditor());
         add("Basculer vue simple / complète",()->{fullExplorer=!fullExplorer;workspace();});
@@ -533,16 +546,6 @@ public class MainActivity extends Activity {
         }
         return clean.toString();
     }
-    private DocumentFile uniqueImportTarget(String path){
-        DocumentFile existing=find(path,false);
-        if(existing==null)return find(path,true);
-        int slash=path.lastIndexOf('/');String parent=slash>=0?path.substring(0,slash+1):"";
-        String file=slash>=0?path.substring(slash+1):path;
-        int dot=file.lastIndexOf('.');String base=dot>0?file.substring(0,dot):file;
-        String ext=dot>0?file.substring(dot):"";
-        for(int i=1;i<1000;i++){DocumentFile candidate=find(parent+base+"_imported_"+i+ext,false);if(candidate==null)return find(parent+base+"_imported_"+i+ext,true);}
-        return null;
-    }
     private void importZip(Uri uri)throws Exception{
         InputStream raw=getContentResolver().openInputStream(uri);
         if(raw==null)throw new IOException("Archive ZIP illisible");
@@ -554,7 +557,7 @@ public class MainActivity extends Activity {
                 String name=safeZipPath(e.getName());
                 if(name==null){zin.closeEntry();continue;}
                 if(e.isDirectory()){ensureDir(name);zin.closeEntry();continue;}
-                DocumentFile out=uniqueImportTarget(name);
+                DocumentFile out=find(name,true);
                 if(out==null)throw new IOException("Impossible de créer "+name);
                 OutputStream os=getContentResolver().openOutputStream(out.getUri(),"wt");
                 if(os==null)throw new IOException("Impossible d'écrire "+name);
@@ -569,8 +572,7 @@ public class MainActivity extends Activity {
                 count++;zin.closeEntry();
             }
         }finally{zin.close();}
-        ensureStructure();
-        say("Import ZIP terminé : "+count+" fichiers. Les fichiers existants ont été conservés ; les doublons sont renommés.");
+        say("Import ZIP terminé : "+count+" fichiers écrits dans le dossier du projet. Les chemins identiques ont été remplacés, sans créer de copies.");
     }
     private void writeZip(Uri uri)throws Exception{
         OutputStream raw=getContentResolver().openOutputStream(uri);ZipOutputStream zout=new ZipOutputStream(raw);zipDir(projectRoot,"",zout);zout.finish();zout.close();
