@@ -80,7 +80,9 @@ public class ProjectManagerActivity extends Activity {
             org.json.JSONObject project=new org.json.JSONObject();project.put("format","leaf-project");project.put("format_version",1);project.put("name",draftName);project.put("genre",draftGenre);project.put("description",draftDescription);project.put("created_at",System.currentTimeMillis());project.put("engine","LeafEngine2D");
             writeText(dir,"project.leaf",project.toString(2));
             DocumentFile data=dir.findFile("data");org.json.JSONObject resources=new org.json.JSONObject();resources.put("resources",new org.json.JSONArray());writeText(data,"resources.json",resources.toString(2));
-            DocumentFile profiles=dir.findFile("profiles");
+            DocumentFile dataFolder=dir.findFile("data");
+            DocumentFile profiles=dataFolder==null?null:dataFolder.findFile("profiles");
+            if(profiles==null)throw new Exception("Dossier data/profiles introuvable");
             for(int profile=1;profile<=3;profile++){org.json.JSONObject save=new org.json.JSONObject();save.put("profile_id",profile);save.put("display_name","Profil "+profile);save.put("level",1);save.put("experience",0);save.put("health",100);save.put("currency",0);save.put("inventory",new org.json.JSONArray());save.put("characters",new org.json.JSONArray());save.put("quests",new org.json.JSONArray());writeText(profiles,"profile_"+profile+".json",save.toString(2));}
             DocumentFile scripts=dir.findFile("scripts");writeText(scripts,"main.leaf","# Point d'entrée du projet "+draftName+"\\n# Les scripts Leaf sont des données/logiques déclaratives tant que le runtime correspondant n'est pas activé.\\n");
             writeText(dir,"game_settings.json",new org.json.JSONObject().put("player_level",1).put("health",100).put("max_health",100).put("experience",0).put("currency",0).put("envelope_number",1).toString(2));
