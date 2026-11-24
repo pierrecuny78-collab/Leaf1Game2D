@@ -77,14 +77,14 @@ public class ProjectManagerActivity extends Activity {
             DocumentFile dir=projects.createDirectory(draftName);if(dir==null)throw new Exception("Création du dossier impossible");
             String[] folders={"scenes","scripts","assets","assets/characters","assets/enemies","assets/environments","assets/ui","assets/icons","assets/audio","prefabs","animations","effects","data","plugins","saves","saves/profile_1","saves/profile_2","saves/profile_3","data/profiles","exports","backup"};
             for(String folder:folders){DocumentFile current=dir;for(String part:folder.split("/")){DocumentFile next=current.findFile(part);if(next==null)next=current.createDirectory(part);if(next==null)throw new Exception("Création impossible : "+folder);current=next;}}
-            org.json.JSONObject project=new org.json.JSONObject();project.put("format","leaf-project");project.put("format_version",1);project.put("name",draftName);project.put("genre",draftGenre);project.put("description",draftDescription);project.put("created_at",System.currentTimeMillis());project.put("engine","LeafEngine2D");
+            org.json.JSONObject project=new org.json.JSONObject();project.put("format","leaf-project");project.put("format_version",1);project.put("name",draftName);project.put("genre",draftGenre);project.put("description",draftDescription);project.put("created_at",System.currentTimeMillis());project.put("engine","LeafEngine2D");project.put("entry_scene","scenes/world.leafscene");
             writeText(dir,"project.leaf",project.toString(2));
             DocumentFile data=dir.findFile("data");org.json.JSONObject resources=new org.json.JSONObject();resources.put("resources",new org.json.JSONArray());writeText(data,"resources.json",resources.toString(2));
             DocumentFile dataFolder=dir.findFile("data");
             DocumentFile profiles=dataFolder==null?null:dataFolder.findFile("profiles");
             if(profiles==null)throw new Exception("Dossier data/profiles introuvable");
             for(int profile=1;profile<=3;profile++){org.json.JSONObject save=new org.json.JSONObject();save.put("profile_id",profile);save.put("display_name","Profil "+profile);save.put("level",1);save.put("experience",0);save.put("health",100);save.put("currency",0);save.put("inventory",new org.json.JSONArray());save.put("characters",new org.json.JSONArray());save.put("quests",new org.json.JSONArray());writeText(profiles,"profile_"+profile+".json",save.toString(2));}
-            DocumentFile scripts=dir.findFile("scripts");writeText(scripts,"main.leaf","# Point d'entrée du projet "+draftName+"\\n# Les scripts Leaf sont des données/logiques déclaratives tant que le runtime correspondant n'est pas activé.\\n");
+            DocumentFile scripts=dir.findFile("scripts");writeText(scripts,"main.leaf","# Point d'entrée du projet "+draftName+"\n# Les scripts Leaf sont des données/logiques déclaratives tant que le runtime correspondant n'est pas activé.\n");
             writeText(dir,"game_settings.json",new org.json.JSONObject().put("player_level",1).put("health",100).put("max_health",100).put("experience",0).put("currency",0).put("envelope_number",1).toString(2));
             DocumentFile scenes=dir.findFile("scenes");org.json.JSONObject scene=new org.json.JSONObject();scene.put("format","leaf-scene");scene.put("version",1);org.json.JSONObject root=new org.json.JSONObject();root.put("name","Root");root.put("type","Node2D");root.put("children",new org.json.JSONArray());scene.put("root",root);writeText(scenes,"world.leafscene",scene.toString(2));
             getSharedPreferences(PREFS,MODE_PRIVATE).edit().putString("selected_project",draftName).apply();
@@ -93,11 +93,11 @@ public class ProjectManagerActivity extends Activity {
     }
     private void writeText(DocumentFile folder,String name,String content)throws Exception{
         DocumentFile file=folder.findFile(name);if(file==null)file=folder.createFile("application/json",name);if(file==null)throw new Exception("Fichier impossible : "+name);
-        try(OutputStream out=getContentResolver().openOutputStream(file.getUri(),"wt")){if(out==null)throw new Exception("Ouverture impossible : "+name);out.write((content+"\\n").getBytes(StandardCharsets.UTF_8));}
+        try(OutputStream out=getContentResolver().openOutputStream(file.getUri(),"wt")){if(out==null)throw new Exception("Ouverture impossible : "+name);out.write((content+"\n").getBytes(StandardCharsets.UTF_8));}
     }
     private String clean(String s){if(s==null)return "";s=s.trim().replaceAll("[^A-Za-z0-9 _-]","").replaceAll("\\s+","_");return s.length()>48?s.substring(0,48):s;}
     private void refresh(){
-        if(list==null)return;list.removeAllViews();String selected=getSharedPreferences(PREFS,MODE_PRIVATE).getString("selected_project","FirstGame");
+        if(list==null)return;list.removeAllViews();String selected=getSharedPreferences(PREFS,MODE_PRIVATE).getString("selected_project","");
         DocumentFile[] dirs=projects.listFiles();Arrays.sort(dirs,(a,b)->String.valueOf(a.getName()).compareToIgnoreCase(String.valueOf(b.getName())));
         int count=0;for(DocumentFile dir:dirs){if(!dir.isDirectory())continue;count++;final String name=dir.getName();
             LinearLayout card=new LinearLayout(this);card.setOrientation(1);card.setPadding(dp(8),dp(8),dp(8),dp(8));card.setBackgroundColor(0xff1e293b);
@@ -129,7 +129,7 @@ public class ProjectManagerActivity extends Activity {
     private void remove(DocumentFile dir){
         new AlertDialog.Builder(this).setTitle("Supprimer "+dir.getName()+" ?").setMessage("Le dossier du projet et toutes ses données seront supprimés. Cette action est irréversible. Exporte d'abord un ZIP si tu veux le conserver.").setNegativeButton("Annuler",null).setPositiveButton("Supprimer",(d,w)->{
             String name=dir.getName();if(!deleteTree(dir)){toast("Suppression partielle ou refusée");}else{
-                android.content.SharedPreferences p=getSharedPreferences(PREFS,MODE_PRIVATE);if(name.equals(p.getString("selected_project","FirstGame")))p.edit().putString("selected_project","FirstGame").apply();
+                android.content.SharedPreferences p=getSharedPreferences(PREFS,MODE_PRIVATE);if(name.equals(p.getString("selected_project","")))p.edit().putString("selected_project","").apply();
                 toast("Projet supprimé");}
             refresh();
         }).show();
