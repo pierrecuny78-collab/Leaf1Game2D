@@ -100,7 +100,7 @@ public class ProjectManagerActivity extends Activity {
             ImageView iconView=new ImageView(this);iconView.setScaleType(ImageView.ScaleType.CENTER_CROP);
             DocumentFile iconFile=null;DocumentFile assetsDir=dir.findFile("assets");DocumentFile iconDir=assetsDir==null?null:assetsDir.findFile("icons");
             if(iconDir!=null){for(String iconName:new String[]{"project_icon.png","project_icon.jpg","project_icon.webp"}){DocumentFile candidate=iconDir.findFile(iconName);if(candidate!=null&&candidate.isFile()){iconFile=candidate;break;}}}
-            if(iconFile!=null){try(InputStream in=getContentResolver().openInputStream(iconFile.getUri())){android.graphics.Bitmap bitmap=BitmapFactory.decodeStream(in);if(bitmap!=null)iconView.setImageBitmap(bitmap);}}else iconView.setImageResource(android.R.drawable.ic_menu_gallery);
+            if(iconFile!=null){try(InputStream in=getContentResolver().openInputStream(iconFile.getUri())){if(in!=null){android.graphics.Bitmap bitmap=BitmapFactory.decodeStream(in);if(bitmap!=null)iconView.setImageBitmap(bitmap);}}catch(java.io.IOException ignored){iconView.setImageResource(android.R.drawable.ic_menu_gallery);}}else iconView.setImageResource(android.R.drawable.ic_menu_gallery);
             LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(dp(52),dp(52));ip.rightMargin=dp(10);heading.addView(iconView,ip);
             heading.addView(label((name.equals(selected)?"● ":"")+name,17,Color.WHITE),new LinearLayout.LayoutParams(0,-2,1));card.addView(heading);
             card.addView(button("🖼 Personnaliser l'icône (PNG / JPG / WebP)",()->pickProjectIcon(name)));
