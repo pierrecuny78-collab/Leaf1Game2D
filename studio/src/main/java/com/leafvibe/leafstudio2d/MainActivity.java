@@ -356,7 +356,7 @@ public class MainActivity extends Activity {
         add("Ouvrir sprites",()->openFolder("assets/sprites"));add("Ouvrir tilesets",()->openFolder("assets/tilesets"));add("Ouvrir audio",()->openFolder("assets/audio"));add("Ouvrir fonts",()->openFolder("assets/fonts"));
         add("Créer fiche de ressource",()->{try{createIfMissing("assets/asset_catalog.json","{\n  \"assets\": []\n}\n");editFile("assets/asset_catalog.json");}catch(Exception e){say(e.getMessage());}});
         add("＋ Ajouter une ressource au jeu",()->createResourceDefinition());
-        add("Modifier le catalogue JSON des ressources",()->{try{createIfMissing("data/resources.json","{\\n  \\"resources\\": []\\n}\\n");editFile("data/resources.json");}catch(Exception e){say(e.getMessage());}});
+        add("Modifier le catalogue JSON des ressources",()->{try{createIfMissing("data/resources.json","{\n  \"resources\": []\n}\n");editFile("data/resources.json");}catch(Exception e){say(e.getMessage());}});
     }
     private void createResourceDefinition(){
         if(!ready())return;
