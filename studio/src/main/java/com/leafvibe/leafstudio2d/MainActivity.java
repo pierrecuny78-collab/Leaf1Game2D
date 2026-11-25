@@ -449,7 +449,7 @@ public class MainActivity extends Activity {
         if(manifest)ok++;
         TextView manifestLine=label((manifest?"✓ ":"✗ ")+"project.leaf.json / project.leaf",13,manifest?0xff86efac:0xfffca5a5);
         manifestLine.setPadding(dp(12),dp(6),dp(8),dp(6));content.addView(manifestLine);
-        TextView result=label("Éléments présents : "+ok+"/"+req.length+"\nL'analyse vérifie les fichiers attendus. Elle ne certifie pas l'exécution des scripts ni la compatibilité de chaque moteur.",13,Color.WHITE);result.setPadding(dp(12),dp(12),dp(12),dp(12));content.addView(result);
+        TextView result=label("Éléments présents : "+ok+"/"+(req.length+1)+"\nL'analyse vérifie les fichiers attendus. Elle ne certifie pas l'exécution des scripts ni la compatibilité de chaque moteur.",13,Color.WHITE);result.setPadding(dp(12),dp(12),dp(12),dp(12));content.addView(result);
         add("Ouvrir le manifeste du projet",()->editFile(find("project.leaf.json",false)!=null?"project.leaf.json":"project.leaf"));
     }
     private org.json.JSONObject loadJsonFile(String path)throws Exception{
