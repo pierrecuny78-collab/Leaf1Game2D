@@ -29,30 +29,38 @@ public class ProjectManagerActivity extends Activity {
         super.onCreate(state);
         getWindow().setStatusBarColor(Color.rgb(15,23,42));getWindow().setNavigationBarColor(Color.rgb(15,23,42));
         String saved=getSharedPreferences(PREFS,MODE_PRIVATE).getString("tree_uri",null);
-        if(saved==null){new AlertDialog.Builder(this).setTitle("Carte SD non sélectionnée").setMessage("Choisis d'abord un dossier de stockage depuis LeafStudio2D.").setPositiveButton("OK",(d,w)->finish()).show();return;}
-        DocumentFile root=DocumentFile.fromTreeUri(this,Uri.parse(saved));
-        DocumentFile app=root==null?null:child(root,"LeafStudio2D");
-        projects=app==null?null:child(app,"Projects");
-        if(projects==null){new AlertDialog.Builder(this).setMessage("Impossible d'accéder au dossier des projets.").setPositiveButton("OK",(d,w)->finish()).show();return;}
+        if(saved!=null){
+            try{
+                DocumentFile storage=DocumentFile.fromTreeUri(this,Uri.parse(saved));
+                DocumentFile app=storage==null?null:storage.findFile("LeafStudio2D");
+                projects=app==null?null:app.findFile("Projects");
+                if(projects!=null&&!projects.isDirectory())projects=null;
+            }catch(Exception ignored){projects=null;}
+        }
+        // Le gestionnaire doit aussi fonctionner sans dossier LeafStudio2D/Projects :
+        // cibler un dossier de jeu externe ne doit créer ni déplacer aucune arborescence.
         build();refresh();
     }
-    private DocumentFile child(DocumentFile p,String name){DocumentFile f=p.findFile(name);return f!=null&&f.isDirectory()?f:p.createDirectory(name);}
+    private DocumentFile child(DocumentFile p,String name){if(p==null)return null;DocumentFile f=p.findFile(name);return f!=null&&f.isDirectory()?f:p.createDirectory(name);}
     private void build(){
         LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(12),dp(12),dp(12),dp(12));root.setBackgroundColor(0xff0f172a);
         root.addView(label("MES PROJETS",24,Color.WHITE));
         root.addView(label("Chaque jeu est un dossier autonome : sources, graphismes, données et trois profils.",13,0xff9fb3c8));
-        root.addView(button("＋ Créer / cibler un projet",()->createProject()));
-        root.addView(button("📂 Utiliser un dossier de jeu existant (sans copie)",()->pickExistingProject()));
+        root.addView(button("＋ Créer un projet vierge LeafStudio2D",()->createProject()));
+        root.addView(button("📂 Cibler un jeu existant (sans copie ni nouvelle arborescence)",()->pickExistingProject()));
+        root.addView(label("Un jeu existant reste dans son dossier d'origine. Ne crée pas de projet vierge avant de le cibler.",12,0xff86efac));
         root.addView(button("↻ Actualiser",()->refresh()));
         ScrollView scroll=new ScrollView(this);list=new LinearLayout(this);list.setOrientation(1);scroll.addView(list);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         root.addView(button("← Retour à LeafStudio2D",()->finish()));setContentView(root);
     }
     private void createProject(){
-        new AlertDialog.Builder(this).setTitle("Nouveau projet")
-            .setItems(new String[]{"Créer un projet vierge LeafStudio2D","Cibler un dossier de jeu existant (sans copie)"},(d,w)->{
-                if(w==0){draftGenre="RPG";draftName="";draftDescription="";showGenreStep();}
-                else pickExistingProject();
-            }).show();
+        if(projects==null||!projects.exists()||!projects.isDirectory()){
+            new AlertDialog.Builder(this).setTitle("Stockage des nouveaux projets")
+                .setMessage("Pour créer un projet vierge, choisis d'abord le dossier de stockage LeafStudio2D dans le tableau de bord. Pour ouvrir un jeu déjà existant, utilise le bouton « Cibler un jeu existant » : aucun dossier LeafStudio2D/Projects n'est nécessaire.")
+                .setPositiveButton("Compris",null).show();
+            return;
+        }
+        draftGenre="RPG";draftName="";draftDescription="";showGenreStep();
     }
     private void pickExistingProject(){
         Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
@@ -86,6 +94,7 @@ public class ProjectManagerActivity extends Activity {
     }
     private void createProjectFiles(){
         try{
+            if(projects==null)throw new Exception("Choisis d'abord le stockage LeafStudio2D pour créer un projet vierge.");
             DocumentFile dir=projects.createDirectory(draftName);if(dir==null)throw new Exception("Création du dossier impossible");
             String[] folders={"scenes","scripts","assets","assets/characters","assets/enemies","assets/environments","assets/ui","assets/icons","assets/audio","prefabs","animations","effects","data","plugins","saves","saves/profile_1","saves/profile_2","saves/profile_3","data/profiles","exports","backup"};
             for(String folder:folders){DocumentFile current=dir;for(String part:folder.split("/")){DocumentFile next=current.findFile(part);if(next==null)next=current.createDirectory(part);if(next==null)throw new Exception("Création impossible : "+folder);current=next;}}
@@ -110,6 +119,10 @@ public class ProjectManagerActivity extends Activity {
     private String clean(String s){if(s==null)return "";s=s.trim().replaceAll("[^A-Za-z0-9 _-]","").replaceAll("\\s+","_");return s.length()>48?s.substring(0,48):s;}
     private void refresh(){
         if(list==null)return;list.removeAllViews();String selected=getSharedPreferences(PREFS,MODE_PRIVATE).getString("selected_project","");
+        if(projects==null||!projects.exists()||!projects.isDirectory()){
+            list.addView(label("Aucun espace de projets vierges n'est configuré. Tu peux quand même cibler un jeu existant avec le bouton ci-dessus.",14,0xffcbd5e1));
+            return;
+        }
         DocumentFile[] dirs=projects.listFiles();Arrays.sort(dirs,(a,b)->String.valueOf(a.getName()).compareToIgnoreCase(String.valueOf(b.getName())));
         int count=0;for(DocumentFile dir:dirs){if(!dir.isDirectory())continue;count++;final String name=dir.getName();
             LinearLayout card=new LinearLayout(this);card.setOrientation(1);card.setPadding(dp(8),dp(8),dp(8),dp(8));card.setBackgroundColor(0xff1e293b);
@@ -157,6 +170,9 @@ public class ProjectManagerActivity extends Activity {
                 getContentResolver().takePersistableUriPermission(uri,flags);
                 DocumentFile selected=DocumentFile.fromTreeUri(this,uri);
                 if(selected==null||!selected.isDirectory())throw new Exception("Dossier invalide");
+                DocumentFile manifest=selected.findFile("project.leaf.json");
+                if(manifest==null)manifest=selected.findFile("project.leaf");
+                if(manifest==null)throw new Exception("Ce dossier ne contient pas project.leaf.json ni project.leaf. Sélectionne le dossier racine du jeu, pas scenes/ ni scripts/.");
                 String name=selected.getName();
                 if(name==null||name.trim().isEmpty())name="Projet externe";
                 getSharedPreferences(PREFS,MODE_PRIVATE).edit()
