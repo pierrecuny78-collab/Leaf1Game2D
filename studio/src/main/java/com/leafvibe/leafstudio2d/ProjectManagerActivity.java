@@ -21,7 +21,7 @@ public class ProjectManagerActivity extends Activity {
     private LinearLayout list;
     private DocumentFile projects;
     private String draftGenre="RPG",draftName="",draftDescription="",iconTargetProject="";
-    private static final int PICK_PROJECT_ICON=731;
+    private static final int PICK_PROJECT_ICON=731, PICK_EXISTING_PROJECT=732;
     private int dp(int n){return (int)(n*getResources().getDisplayMetrics().density+0.5f);}
     private TextView label(String s,int size,int color){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(color);return t;}
     private Button button(String s,Runnable r){Button b=new Button(this);b.setText(s);b.setAllCaps(false);b.setOnClickListener(v->r.run());return b;}
@@ -41,12 +41,24 @@ public class ProjectManagerActivity extends Activity {
         LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(12),dp(12),dp(12),dp(12));root.setBackgroundColor(0xff0f172a);
         root.addView(label("MES PROJETS",24,Color.WHITE));
         root.addView(label("Chaque jeu est un dossier autonome : sources, graphismes, données et trois profils.",13,0xff9fb3c8));
-        root.addView(button("＋ Créer un projet",()->createProject()));
+        root.addView(button("＋ Créer / cibler un projet",()->createProject()));
+        root.addView(button("📂 Utiliser un dossier de jeu existant (sans copie)",()->pickExistingProject()));
         root.addView(button("↻ Actualiser",()->refresh()));
         ScrollView scroll=new ScrollView(this);list=new LinearLayout(this);list.setOrientation(1);scroll.addView(list);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         root.addView(button("← Retour à LeafStudio2D",()->finish()));setContentView(root);
     }
-    private void createProject(){ draftGenre="RPG";draftName="";draftDescription="";showGenreStep(); }
+    private void createProject(){
+        new AlertDialog.Builder(this).setTitle("Nouveau projet")
+            .setItems(new String[]{"Créer un projet vierge LeafStudio2D","Cibler un dossier de jeu existant (sans copie)"},(d,w)->{
+                if(w==0){draftGenre="RPG";draftName="";draftDescription="";showGenreStep();}
+                else pickExistingProject();
+            }).show();
+    }
+    private void pickExistingProject(){
+        Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_WRITE_URI_PERMISSION|Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        startActivityForResult(i,PICK_EXISTING_PROJECT);
+    }
     private void showGenreStep(){
         String[] genres={"RPG","Plateforme","Gestion / Construction","Stratégie","Simulation","Aventure","Tower Defense","Survie / Crafting","Projet personnalisé"};
         new AlertDialog.Builder(this).setTitle("1/4 • Quel type de jeu ?")
@@ -87,7 +99,7 @@ public class ProjectManagerActivity extends Activity {
             DocumentFile scripts=dir.findFile("scripts");writeText(scripts,"main.leaf","# Point d'entrée du projet "+draftName+"\n# Les scripts Leaf sont des données/logiques déclaratives tant que le runtime correspondant n'est pas activé.\n");
             writeText(dir,"game_settings.json",new org.json.JSONObject().put("player_level",1).put("health",100).put("max_health",100).put("experience",0).put("currency",0).put("envelope_number",1).toString(2));
             DocumentFile scenes=dir.findFile("scenes");org.json.JSONObject scene=new org.json.JSONObject();scene.put("format","leaf-scene");scene.put("version",1);org.json.JSONObject root=new org.json.JSONObject();root.put("name","Root");root.put("type","Node2D");root.put("children",new org.json.JSONArray());scene.put("root",root);writeText(scenes,"world.leafscene",scene.toString(2));
-            getSharedPreferences(PREFS,MODE_PRIVATE).edit().putString("selected_project",draftName).apply();
+            getSharedPreferences(PREFS,MODE_PRIVATE).edit().putString("selected_project",draftName).remove("selected_project_uri").apply();
             toast("Projet "+draftName+" créé avec son squelette "+draftGenre);refresh();
         }catch(Exception e){toast("Erreur de création : "+e.getMessage());}
     }
@@ -137,7 +149,26 @@ public class ProjectManagerActivity extends Activity {
     private boolean deleteTree(DocumentFile f){if(f.isDirectory()){for(DocumentFile c:f.listFiles())if(!deleteTree(c))return false;}return f.delete();}
     @Override protected void onActivityResult(int request,int result,Intent data){
         super.onActivityResult(request,result,data);
-        if(request!=PICK_PROJECT_ICON||result!=RESULT_OK||data==null||data.getData()==null)return;
+        if(result!=RESULT_OK||data==null||data.getData()==null)return;
+        if(request==PICK_EXISTING_PROJECT){
+            try{
+                Uri uri=data.getData();
+                int flags=data.getFlags()&(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                getContentResolver().takePersistableUriPermission(uri,flags);
+                DocumentFile selected=DocumentFile.fromTreeUri(this,uri);
+                if(selected==null||!selected.isDirectory())throw new Exception("Dossier invalide");
+                String name=selected.getName();
+                if(name==null||name.trim().isEmpty())name="Projet externe";
+                getSharedPreferences(PREFS,MODE_PRIVATE).edit()
+                    .putString("selected_project",name)
+                    .putString("selected_project_uri",uri.toString())
+                    .apply();
+                toast("Dossier ciblé directement : "+name+" (aucune copie créée)");
+                setResult(RESULT_OK);finish();
+            }catch(Exception e){toast("Impossible de cibler ce dossier : "+e.getMessage());}
+            return;
+        }
+        if(request!=PICK_PROJECT_ICON)return;
         try{
             DocumentFile dir=projects.findFile(iconTargetProject);
             if(dir==null||!dir.isDirectory())throw new Exception("Projet introuvable");
