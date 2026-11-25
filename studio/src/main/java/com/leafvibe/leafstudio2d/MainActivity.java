@@ -53,7 +53,7 @@ public class MainActivity extends Activity {
         TextView h=label(title,21,Color.WHITE);h.setTypeface(Typeface.DEFAULT_BOLD);h.setPadding(dp(14),dp(12),dp(8),dp(3));root.addView(h);
         TextView sub=label(subtitle,12,0xff9fb3c8);sub.setPadding(dp(14),0,dp(8),dp(10));root.addView(sub);
         content=vertical();ScrollView sc=new ScrollView(this);sc.addView(content);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
-        status=label("LeafStudio2D 0.4.0 • hors ligne • stockage SD/ZIP",11,0xff86efac);status.setPadding(dp(12),dp(7),dp(8),dp(7));root.addView(status);
+        status=label("LeafStudio2D 0.5.2 • projets directs • stockage SD/ZIP",11,0xff86efac);status.setPadding(dp(12),dp(7),dp(8),dp(7));root.addView(status);
         setContentView(root);
     }
     private void add(String text,Runnable action){content.addView(btn(text,action),new LinearLayout.LayoutParams(-1,dp(48)));}
@@ -134,8 +134,14 @@ public class MainActivity extends Activity {
         if(externalUri!=null){
             try{
                 DocumentFile external=DocumentFile.fromTreeUri(this,Uri.parse(externalUri));
-                if(external!=null&&external.exists()&&external.isDirectory())projectRoot=external;
-            }catch(Exception ignored){}
+                if(external!=null&&external.exists()&&external.isDirectory()){
+                    DocumentFile manifest=external.findFile("project.leaf.json");
+                    if(manifest==null)manifest=external.findFile("project.leaf");
+                    if(manifest!=null&&manifest.isFile())projectRoot=external;
+                    else say("Le dossier ciblé ne contient plus de manifeste de projet.");
+                }
+            }catch(Exception ignored){say("L'accès au dossier ciblé a expiré. Sélectionne-le à nouveau.");}
+            if(projectRoot==null)prefs.edit().remove("selected_project_uri").apply();
         }
         if(projectRoot==null&&storageRoot!=null){
             DocumentFile base=storageRoot.findFile("LeafStudio2D");
@@ -437,10 +443,14 @@ public class MainActivity extends Activity {
     }
     private void analyzer(){
         if(!ready())return;shell("ANALYSEUR ET CONSOLE","Contrôles de structure, ressources et compatibilité");add("← Tableau de bord",()->dashboard());
-        String[] req={"project.leaf","scenes/world.leafscene","scripts/main.leaf","data/profiles/profile_1.json","data/profiles/profile_2.json","data/profiles/profile_3.json","assets/icons","assets/audio","animations"};
+        String[] req={"scenes/world.leafscene","scripts/main.leaf","data/profiles/profile_1.json","data/profiles/profile_2.json","data/profiles/profile_3.json","assets/icons","assets/audio","animations"};
         int ok=0;for(String p:req){DocumentFile f=find(p,false);boolean exists=f!=null;if(exists)ok++;TextView t=label((exists?"✓ ":"✗ ")+p,13,exists?0xff86efac:0xfffca5a5);t.setPadding(dp(12),dp(6),dp(8),dp(6));content.addView(t);}
+        boolean manifest=find("project.leaf.json",false)!=null||find("project.leaf",false)!=null;
+        if(manifest)ok++;
+        TextView manifestLine=label((manifest?"✓ ":"✗ ")+"project.leaf.json / project.leaf",13,manifest?0xff86efac:0xfffca5a5);
+        manifestLine.setPadding(dp(12),dp(6),dp(8),dp(6));content.addView(manifestLine);
         TextView result=label("Éléments présents : "+ok+"/"+req.length+"\nL'analyse vérifie les fichiers attendus. Elle ne certifie pas l'exécution des scripts ni la compatibilité de chaque moteur.",13,Color.WHITE);result.setPadding(dp(12),dp(12),dp(12),dp(12));content.addView(result);
-        add("Ouvrir les paramètres du projet",()->editFile("project.leaf"));
+        add("Ouvrir le manifeste du projet",()->editFile(find("project.leaf.json",false)!=null?"project.leaf.json":"project.leaf"));
     }
     private org.json.JSONObject loadJsonFile(String path)throws Exception{
         DocumentFile f=find(path,false);
