@@ -25,21 +25,21 @@ public class GameActivity extends Activity {
         getWindow().setStatusBarColor(Color.rgb(20, 38, 30));
         getWindow().setNavigationBarColor(Color.rgb(20, 38, 30));
         try {
-            String treeValue = getIntent().getStringExtra("storage_tree_uri");
+            String projectValue = getIntent().getStringExtra("project_uri");
             String projectName = getIntent().getStringExtra("project_name");
-            if (treeValue == null || projectName == null || projectName.trim().isEmpty()) {
-                throw new Exception("Aucun projet sélectionné. Reviens dans LeafStudio2D et ouvre un projet.");
+            if (projectValue == null || projectName == null || projectName.trim().isEmpty()) {
+                throw new Exception("Aucun dossier de projet sélectionné. Reviens dans LeafStudio2D et cible le dossier du jeu.");
             }
-            DocumentFile tree = DocumentFile.fromTreeUri(this, Uri.parse(treeValue));
-            DocumentFile app = child(tree, "LeafStudio2D");
-            DocumentFile projects = child(app, "Projects");
-            DocumentFile project = projects == null ? null : projects.findFile(projectName);
-            if (project == null || !project.isDirectory()) throw new Exception("Le dossier du projet sélectionné est introuvable.");
+            DocumentFile project = DocumentFile.fromTreeUri(this, Uri.parse(projectValue));
+            if (project == null || !project.exists() || !project.isDirectory()) throw new Exception("Le dossier du projet sélectionné est introuvable.");
             DocumentFile manifest = project.findFile("project.leaf.json");
             if (manifest == null) manifest = project.findFile("project.leaf");
             if (manifest == null) throw new Exception("Manifest du projet absent (project.leaf.json ou project.leaf).");
             JSONObject config = new JSONObject(read(manifest));
-            String scenePath = config.optString("entry_scene", "scenes/world.leafscene");
+            JSONObject runtime = config.optJSONObject("runtime");
+            String scenePath = config.optString("entry_scene", "");
+            if (scenePath.isEmpty() && runtime != null) scenePath = runtime.optString("entry_scene", "");
+            if (scenePath.isEmpty()) scenePath = "scenes/world.leafscene";
             DocumentFile sceneFile = find(project, scenePath);
             if (sceneFile == null || !sceneFile.isFile()) throw new Exception("Scène d'entrée introuvable : " + scenePath);
             JSONObject scene = new JSONObject(read(sceneFile));
