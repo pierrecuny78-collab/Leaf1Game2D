@@ -129,21 +129,29 @@ public class MainActivity extends Activity {
     }
     private void openWorkspace(){
         projectRoot=null;
-        if(storageRoot==null)return;
-        DocumentFile base=storageRoot.findFile("LeafStudio2D");
-        projectsRoot=base==null?null:base.findFile("Projects");
-        String selected=getSharedPreferences(PREFS,MODE_PRIVATE).getString("selected_project","");
-        if(projectsRoot!=null&&selected!=null&&!selected.trim().isEmpty()){
-            DocumentFile candidate=projectsRoot.findFile(selected);
-            if(candidate!=null&&candidate.isDirectory())projectRoot=candidate;
+        android.content.SharedPreferences prefs=getSharedPreferences(PREFS,MODE_PRIVATE);
+        String externalUri=prefs.getString("selected_project_uri",null);
+        if(externalUri!=null){
+            try{
+                DocumentFile external=DocumentFile.fromTreeUri(this,Uri.parse(externalUri));
+                if(external!=null&&external.exists()&&external.isDirectory())projectRoot=external;
+            }catch(Exception ignored){}
         }
-        say(projectRoot==null?"Aucun projet ouvert : choisis un projet existant.":"Projet ouvert directement depuis son dossier : "+projectRoot.getName());
+        if(projectRoot==null&&storageRoot!=null){
+            DocumentFile base=storageRoot.findFile("LeafStudio2D");
+            projectsRoot=base==null?null:base.findFile("Projects");
+            String selected=prefs.getString("selected_project","");
+            if(projectsRoot!=null&&selected!=null&&!selected.trim().isEmpty()){
+                DocumentFile candidate=projectsRoot.findFile(selected);
+                if(candidate!=null&&candidate.isDirectory())projectRoot=candidate;
+            }
+        }
+        say(projectRoot==null?"Aucun projet ouvert : cible un dossier existant ou crée un projet vierge.":"Projet ciblé sans copie : "+projectRoot.getName());
     }
     private void launchSelectedProject(){
         if(!ready())return;
-        if(storageRoot==null){say("Dossier de stockage indisponible. Rechoisis la carte SD.");return;}
         Intent intent=new Intent(this,GameActivity.class);
-        intent.putExtra("storage_tree_uri",storageRoot.getUri().toString());
+        intent.putExtra("project_uri",projectRoot.getUri().toString());
         intent.putExtra("project_name",projectRoot.getName());
         startActivity(intent);
     }
