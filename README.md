@@ -1,10 +1,10 @@
 # Leaf1Game2D
 
-**RPG 2D pixel art — LeafEngine2D native alpha 0.3.0**
+**LeafStudio2D — atelier de création 2D (version de travail 0.4.0-alpha)**
 
-Leaf1Game2D is an offline-first Android RPG prototype powered by the in-house C++17 LeafEngine2D core. Android's Activity/Canvas is the mobile shell; game simulation and pixel-buffer rendering are implemented in C++ and exposed through JNI.
+Ce dépôt héberge l'application Android LeafStudio2D et le prototype Leaf1Game2D utilisé comme projet/jeu de démonstration. Le moteur natif C++17 LeafEngine2D est encore un moteur en cours d'évolution. LeafStudio2D n'est pas encore un éditeur universel/runtime complet : consulter le cahier maître pour distinguer les fonctions présentes, partielles et à construire.
 
-## Alpha 0.3.0
+## État du dépôt — 0.4.0-alpha (travail en cours)
 
 - Native C++17 engine, Android NDK and CMake.
 - 480x270 pixel-art scene with crisp nearest-neighbor scaling.
@@ -19,16 +19,24 @@ Leaf1Game2D is an offline-first Android RPG prototype powered by the in-house C+
 
 GitHub Actions runs native C++ tests, builds the Android game APK and the LeafStudio2D editor APK, then packages both APKs with the complete source tree.
 
-Download from the repository's **Actions → Build LeafVibe 2D apps → Artifacts**:
-- `Leaf1Game2D-Alpha-0.3.0-APK`
-- `LeafStudio2D-Alpha-0.2.0-APK`
-- `Leaf1Game2D-Complet-0.3.0` (source ZIP + both APKs)
+Les artefacts sont publiés par GitHub Actions sous **Actions → Build LeafVibe 2D apps → Artifacts** lorsque le workflow réussit :
+- `Leaf1Game2D-Alpha-0.4.0-APK`
+- `LeafStudio2D-Alpha-0.4.0-APK`
+- `Leaf1Game2D-Complet-0.4.0` (ZIP source + deux APK)
+
+Les artefacts sont des APK debug de test. Leur présence ne certifie pas le fonctionnement sur appareil. Ne pas annoncer LeafStudio2D comme terminé tant que les critères du cahier maître ne sont pas passés.
 
 The APKs are debug builds intended for testing, not Play Store release-signed packages. GitHub Actions artifacts are retained for 30 days.
 
 ## Engine architecture
 
 See `docs/LEAFENGINE2D_ARCHITECTURE.md` and `engine/README.md`. SDL2 is not currently used: Android's Activity/Canvas is the mobile shell, while LeafEngine2D owns game logic and pixel rendering.
+
+## Documentation LeafStudio2D
+
+- `docs/LEAFSTUDIO2D_MASTER_FEATURE_BACKLOG.md` : cahier maître consolidé, toutes les demandes, priorités, limites et critères de validation.
+- `docs/LEAFSTUDIO2D_VISION_UNIVERSELLE_V2.md` : vision produit.
+- `docs/LEAFSTUDIO2D_IMPLEMENTATION_PLAN.md` : plan d'intégration et état technique.
 
 ## Roadmap
 

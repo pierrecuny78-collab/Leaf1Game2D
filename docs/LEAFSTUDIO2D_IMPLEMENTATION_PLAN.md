@@ -1,5 +1,8 @@
 # LeafStudio2D — plan d'intégration exécutable
 
+> Référence exhaustive des demandes : [LEAFSTUDIO2D_MASTER_FEATURE_BACKLOG.md](LEAFSTUDIO2D_MASTER_FEATURE_BACKLOG.md). Ce cahier maître rassemble les exigences UI/UX, création, stockage, éditeurs, runtime, RPG, plugins, intégrations Leaf* et tests d'acceptation. Toute livraison doit mettre à jour les états dans les deux documents.
+
+
 Ce plan distingue les fonctions réellement présentes du cahier des charges cible. Ne pas annoncer une capacité comme disponible tant que son test d'acceptation n'est pas passé sur Android physique.
 
 ## État constaté dans le code actuel
@@ -57,3 +60,35 @@ Ce plan distingue les fonctions réellement présentes du cahier des charges cib
 
 ## Politique de publication
 Chaque APK publiée doit indiquer le commit source, le numéro de version, les fonctions implémentées, les fonctions expérimentales et les tests passés. Une compilation réussie ne prouve pas que les fonctionnalités sont complètes.
+
+
+## Mise à jour — éditeur visuel de scènes (23 novembre 2026)
+
+Une première version interactive de l'éditeur visuel a été ajoutée dans `MainActivity`.
+
+Fonctions réellement implémentées dans cette étape :
+- ouverture et lecture de `scenes/world.leafscene` ;
+- affichage d'une zone de scène 2D 480×270 avec grille ;
+- création de nœuds `Rectangle2D` et `Sprite2D` (Sprite2D reste un rectangle de remplacement) ;
+- sélection tactile et déplacement des nœuds ;
+- suppression du nœud sélectionné ;
+- sauvegarde explicite du tableau `root.children` dans le fichier de scène.
+
+Limites actuelles :
+- pas encore de chargement de textures depuis `assets/sprites` ;
+- pas de redimensionnement, rotation, calques visuels, collisions éditables ni caméra ;
+- l'aperçu intégré est un éditeur de données de scène, pas encore le runtime qui exécute le gameplay ;
+- les scènes autres que `world.leafscene` ne sont pas encore sélectionnables depuis cet écran.
+
+Validation à réaliser : compilation Android, ouverture de scène existante, ajout/déplacement/suppression, sauvegarde, fermeture/réouverture et contrôle de conservation des autres champs JSON.
+
+
+## V2 — première tranche de mise en œuvre
+
+- Icône Android LeafStudio2D ajoutée et référencée dans le manifeste.
+- Manifeste Android normalisé avec de vrais retours à la ligne.
+- Spécification de référence créée : `LEAFSTUDIO2D_VISION_UNIVERSELLE_V2.md`.
+- Gestionnaire de projets : création guidée en quatre étapes (genre, nom, description, confirmation).
+- À la création, génération d'une arborescence de projet autonome, de trois dossiers de profils, d'un manifeste `project.leaf`, d'un catalogue de ressources JSON vide et d'une scène initiale `world.leafscene`.
+
+Validation restante : compilation Android du dernier commit, test de création depuis l'interface, fermeture/réouverture du projet, vérification de chaque fichier via le stockage SAF et test sur appareil réel.
