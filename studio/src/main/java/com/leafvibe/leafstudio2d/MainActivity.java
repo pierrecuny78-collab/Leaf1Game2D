@@ -159,6 +159,7 @@ public class MainActivity extends Activity {
         Intent intent=new Intent(this,GameActivity.class);
         intent.putExtra("project_uri",projectRoot.getUri().toString());
         intent.putExtra("project_name",projectRoot.getName());
+        intent.putExtra("mode","run");
         startActivity(intent);
     }
     private DocumentFile childDir(DocumentFile p,String n){DocumentFile d=p.findFile(n);return d!=null&&d.isDirectory()?d:p.createDirectory(n);}
