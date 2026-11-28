@@ -4,6 +4,8 @@
 static leaf::Engine game;
 static leaf::PixelSurface surface(leaf::Engine::kWidth, leaf::Engine::kHeight);
 
+static jint hatch() { return static_cast<jint>(game.hatch_egg()); }
+
 extern "C" JNIEXPORT void JNICALL Java_com_leafvibe_leaf1game2d_MainActivity_nativeMove(JNIEnv*, jobject, jint x, jint y) { game.move_player(x, y); }
 extern "C" JNIEXPORT void JNICALL Java_com_leafvibe_leaf1game2d_MainActivity_nativeCollectEgg(JNIEnv*, jobject) { game.collect_egg(); }
 extern "C" JNIEXPORT jint JNICALL Java_com_leafvibe_leaf1game2d_MainActivity_nativeHatchEgg(JNIEnv*, jobject) { return hatch(); }
