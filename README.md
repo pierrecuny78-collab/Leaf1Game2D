@@ -17,7 +17,7 @@ Ce dépôt héberge l'application Android LeafStudio2D et le prototype Leaf1Game
 - Four hatch rarities (common, rare, epic, legendary), with an epic-or-better guarantee every ten hatches.
 - Offline prototype; no account or network permission.
 
-## Build and downloads
+Le moteur natif est validé par les tests C++ du workflow avant la compilation des APK.\n\n## Build and downloads
 
 GitHub Actions runs native C++ tests, builds the Android game APK and the LeafStudio2D editor APK, then packages both APKs with the complete source tree.
 
