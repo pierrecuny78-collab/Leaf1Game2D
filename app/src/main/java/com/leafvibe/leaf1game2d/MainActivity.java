@@ -15,6 +15,11 @@ public class MainActivity extends Activity {
   static { System.loadLibrary("leafengine"); }
   private native void nativeMove(int dx, int dy);
   private native void nativeCollectEgg();
+  private native int nativeHatchEgg();
+  private native void nativeRestoreHatched(int count);
+  private native int nativeHatched();
+  private native int nativeCreatureCount();
+  private native int nativeLastHatchRarity();
   private native void nativeWinBattle();
   private native void nativeRestore(int coins, int xp, int level, int eggs);
   private native int[] nativeFrame();
@@ -35,6 +40,7 @@ public class MainActivity extends Activity {
       progress.getInt("level", 1),
       progress.getInt("eggs", 0)
     );
+    nativeRestoreHatched(progress.getInt("hatched", 0));
     setContentView(new GameView());
   }
 
@@ -45,6 +51,7 @@ public class MainActivity extends Activity {
       .putInt("xp", nativeXp())
       .putInt("level", nativeLevel())
       .putInt("eggs", nativeEggs())
+      .putInt("hatched", nativeHatched())
       .apply();
   }
 
@@ -93,13 +100,18 @@ public class MainActivity extends Activity {
       label(c, "▲", 48, 241, 12, Color.WHITE);
       label(c, "◀     ▼     ▶", 20, 257, 12, Color.WHITE);
       box(c, 355, 226, 117, 36, 0xDD172331);
-      label(c, "EGG " + nativeEggs(), 363, 249, 11, 0xFFFFE58A);
-      label(c, "BOSS", 419, 249, 12, 0xFFFF9A9A);
+      label(c, "FIND", 357, 249, 10, 0xFFFFE58A);
+      label(c, "HATCH", 393, 249, 10, 0xFFB8F3C8);
+      label(c, "BOSS", 440, 249, 10, 0xFFFF9A9A);
+      label(c, "EGG " + nativeEggs() + "  CREATURES " + nativeCreatureCount(), 8, 217, 10, Color.WHITE);
       if (message > 0) {
         box(c, 130, 95, 220, 54, 0xEE172331);
-        label(c, message == 1 ? "EGG COLLECTED +100" : "BATTLE WON +150", 145, 126, 14, Color.WHITE);
+        String text = message == 1 ? "EGG FOUND +100" : (message == 2 ? "BATTLE WON +150" : (message == 3 ? "EGG HATCHED!" : "NO EGG TO HATCH"));
+        label(c, text, 145, 126, 14, Color.WHITE);
+        if (message == 3) label(c, "RARITY " + new String[]{"", "COMMON", "RARE", "EPIC", "LEGENDARY"}[nativeLastHatchRarity()], 170, 140, 10, 0xFFFFE58A);
       }
       c.restore();
+      postInvalidateDelayed(33);
     }
 
     @Override public boolean onTouchEvent(MotionEvent e) {
@@ -110,9 +122,11 @@ public class MainActivity extends Activity {
         if (x < 75) nativeMove(0, -12);
         else nativeMove(x < 40 ? -12 : x > 78 ? 12 : 0, 12);
       } else if (y > 220 && x > 350) {
-        if (x < 415) {
+        if (x < 390) {
           nativeCollectEgg();
           message = 1;
+        } else if (x < 434) {
+          message = nativeHatchEgg() > 0 ? 3 : 4;
         } else {
           nativeWinBattle();
           message = 2;
