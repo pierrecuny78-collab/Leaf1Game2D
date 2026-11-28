@@ -1,12 +1,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
+        android:icon="@drawable/ic_leafstudio"
+        android:roundIcon="@drawable/ic_leafstudio"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:label="LeafStudio2D"
         android:allowBackup="false"
         android:fullBackupContent="false"
         android:supportsRtl="true">
-        <activity android:name=".GameLibraryActivity" android:screenOrientation="unspecified" android:exported="false" />\n        <activity android:name=".GameActivity" android:screenOrientation="unspecified" android:exported="false" />
+        <activity android:name=".ProjectManagerActivity" android:screenOrientation="unspecified" android:exported="false" />
+        <activity android:name=".GameLibraryActivity" android:screenOrientation="unspecified" android:exported="false" />
+        <activity android:name=".GameActivity" android:screenOrientation="unspecified" android:exported="false" />
         <activity android:name=".MainActivity" android:screenOrientation="unspecified"
             android:configChanges="orientation|screenSize|keyboardHidden" android:exported="true">
             <intent-filter>
@@ -14,6 +19,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <service android:name=".LeafLiveWallpaperService" android:label="LeafStudio2D — Monde animé" android:permission="android.permission.BIND_WALLPAPER" android:exported="true">
+            <intent-filter><action android:name="android.service.wallpaper.WallpaperService" /></intent-filter>
+            <meta-data android:name="android.service.wallpaper" android:resource="@xml/leaf_wallpaper" />
+        </service>
         <service android:name=".GameRuntimeService" android:exported="false" android:stopWithTask="false" />
     </application>
 </manifest>

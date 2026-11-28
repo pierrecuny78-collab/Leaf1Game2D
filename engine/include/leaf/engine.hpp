@@ -15,6 +15,8 @@ struct SaveData {
   int xp{0};
   int player_level{1};
   int eggs_collected{0};
+  int eggs_hatched{0};
+  int last_hatch_rarity{0};
   std::vector<Creature> creatures;
 };
 
@@ -42,13 +44,16 @@ public:
   void render(PixelSurface& target) const;
   void move_player(int dx, int dy);
   void collect_egg();
+  int hatch_egg(); // 0: no egg, 1: common, 2: rare, 3: epic, 4: legendary
   void win_battle();
   void restore_progress(int coins, int xp, int level, int eggs);
+  void restore_hatched(int count);
   const SaveData& save() const { return save_; }
   const Vec2i& player() const { return player_; }
 private:
   SaveData save_;
   Vec2i player_{240, 135};
   double animation_time_{0.0};
+  double hatch_flash_{0.0};
 };
 }

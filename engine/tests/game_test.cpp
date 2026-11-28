@@ -18,6 +18,19 @@ int main() {
   assert(game.save().coins == 100);
   assert(game.save().xp == 35);
 
+  const int before_hatch = static_cast<int>(game.save().creatures.size());
+  const int first_rarity = game.hatch_egg();
+  assert(first_rarity >= 1 && first_rarity <= 4);
+  assert(game.save().eggs_collected == 0);
+  assert(game.save().eggs_hatched == 1);
+  assert(static_cast<int>(game.save().creatures.size()) == before_hatch + 1);
+  assert(game.hatch_egg() == 0); // no egg: never consumes or creates a creature
+  for (int i = 0; i < 9; ++i) { game.collect_egg(); game.hatch_egg(); }
+  assert(game.save().last_hatch_rarity >= 3); // tenth hatch pity guarantee
+  game.restore_hatched(4);
+  assert(game.save().eggs_hatched == 4);
+  assert(game.save().creatures.size() == 5);
+
   game.win_battle();
   assert(game.save().coins >= 250);
   assert(game.save().creatures.front().xp == 60);

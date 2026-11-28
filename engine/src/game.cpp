@@ -1,5 +1,6 @@
 #include "leaf/engine.hpp"
 #include <algorithm>
+#include <cmath>
 
 namespace leaf {
 namespace {
@@ -67,6 +68,22 @@ constexpr const char* kSproutlingSprite[] = {
   nullptr
 };
 
+constexpr const char* kEmbercubSprite[] = {
+  "......PPPP......", ".....PPPPPP.....", "....PPYYYYPP....", "...PPYYYYYYPP...",
+  "...PPKKYYKKPP...", "...PPYYYYYYPP...", "....PPPPPPPP....", ".....PPPPPP.....",
+  "......PPPP......", ".....PP..PP.....", "....PP....PP....", "................", nullptr
+};
+constexpr const char* kAquaphinSprite[] = {
+  ".......bbbb.....", "......bbbbbb....", ".....bbWWWWbb...", "....bbWWWWWWbb..",
+  "....bbKKWWKKbb..", "....bbbbbbbbbb..", ".....bbbbbbbb...", "......bbbbbb....",
+  ".......bbbb.....", "......bb..bb....", ".....bb....bb...", "................", nullptr
+};
+constexpr const char* kLunowlSprite[] = {
+  "......PPPP......", ".....PPPPPP.....", "....PPWWWWPP....", "...PPWWWWWWPP...",
+  "...PPKKWWKKPP...", "...PPWWWWWWPP...", "....PPPPPPPP....", ".....PPPPPP.....",
+  "....PP..PP..PP..", "...PP...PP...PP.", "................", nullptr
+};
+
 constexpr const char* kEggSprite[] = {
   "......YYYY......",
   ".....YWWYYY.....",
@@ -91,7 +108,11 @@ constexpr const char* kEggSprite[] = {
 Engine::Engine() {
   save_.creatures.push_back(Creature{"sproutling", "Sproutling", "Nature", 1, 30, 30, 6, 0});
 }
-void Engine::update(double dt) { animation_time_ += std::max(0.0, std::min(dt, 0.1)); }
+void Engine::update(double dt) {
+  const double step = std::max(0.0, std::min(dt, 0.1));
+  animation_time_ += step;
+  hatch_flash_ = std::max(0.0, hatch_flash_ - step);
+}
 void Engine::move_player(int dx, int dy) {
   player_.x = std::max(8, std::min(kWidth - 8, player_.x + dx));
   player_.y = std::max(24, std::min(kHeight - 8, player_.y + dy));
@@ -111,6 +132,39 @@ void Engine::collect_egg() {
     ++save_.player_level;
     save_.coins += 50;
   }
+}
+int Engine::hatch_egg() {
+  if (save_.eggs_collected <= 0) return 0;
+  --save_.eggs_collected;
+  ++save_.eggs_hatched;
+  // Reproducible local roll. Every 10th hatch is guaranteed epic or better.
+  const unsigned roll = static_cast<unsigned>((save_.eggs_hatched * 37 + save_.player_level * 19 + 11) % 100);
+  int rarity = roll < 60 ? 1 : (roll < 85 ? 2 : (roll < 97 ? 3 : 4));
+  if (save_.eggs_hatched % 10 == 0 && rarity < 3) rarity = 3;
+  save_.last_hatch_rarity = rarity;
+  hatch_flash_ = 2.4;
+
+  static const char* names[] = {"", "Sproutling", "Embercub", "Aquaphin", "Lunowl"};
+  static const char* elements[] = {"", "Nature", "Feu", "Eau", "Lumiere"};
+  const int index = rarity == 1 ? 0 : (rarity == 2 ? 1 : (rarity == 3 ? 2 : 3));
+  const int baseHp = 28 + rarity * 8;
+  save_.creatures.push_back(Creature{
+    std::string("hatch_") + std::to_string(save_.eggs_hatched), names[index + 1], elements[index + 1],
+    1, baseHp, baseHp, 5 + rarity * 2, 0
+  });
+  return rarity;
+}
+void Engine::restore_hatched(int count) {
+  const int target = std::max(0, std::min(count, 500));
+  while (static_cast<int>(save_.creatures.size()) > target + 1) save_.creatures.pop_back();
+  while (static_cast<int>(save_.creatures.size()) < target + 1) {
+    const int n = static_cast<int>(save_.creatures.size());
+    const int rarity = 1 + (n % 4);
+    const char* names[] = {"Sproutling", "Embercub", "Aquaphin", "Lunowl"};
+    const char* elements[] = {"Nature", "Feu", "Eau", "Lumiere"};
+    save_.creatures.push_back(Creature{std::string("restored_") + std::to_string(n), names[(rarity - 1) % 4], elements[(rarity - 1) % 4], 1, 28 + rarity * 8, 28 + rarity * 8, 5 + rarity * 2, 0});
+  }
+  save_.eggs_hatched = target;
 }
 void Engine::win_battle() {
   save_.coins += 150;
@@ -146,9 +200,36 @@ void Engine::render(PixelSurface& s) const {
     s.fill(Rect{x - 4, y - 13, 13, 8}, Color{53, 119, 68, 255});
   }
 
-  // World props and characters now use readable 16x16 pixel-art sprites.
-  draw_sprite(s, 92, 148, kEggSprite, 16);
-  draw_sprite(s, 330, 132, kSproutlingSprite, 16);
-  draw_sprite(s, player_.x - 8, player_.y - 8, kPlayerSprite, 16);
+  // Animated pixel-art props: idle bob, egg wobble and a short hatch sparkle.
+  const int bob = static_cast<int>(std::sin(animation_time_ * 5.0) * 2.0);
+  const int wobble = static_cast<int>(std::sin(animation_time_ * 9.0) * (hatch_flash_ > 0.0 ? 3.0 : 1.0));
+  draw_sprite(s, 92 + wobble, 148 + (hatch_flash_ > 0.0 ? 0 : bob), kEggSprite, 16);
+  if (hatch_flash_ > 1.65) {
+    s.fill(Rect{98, 145, 2, 5}, Color{255, 255, 230, 255});
+    s.fill(Rect{105, 140, 2, 4}, Color{255, 232, 120, 255});
+    s.fill(Rect{112, 149, 2, 5}, Color{255, 255, 230, 255});
+  }
+  if (save_.creatures.size() > 1) {
+    const char* const* sprite = kSproutlingSprite;
+    switch (save_.last_hatch_rarity) {
+      case 2: sprite = kEmbercubSprite; break;
+      case 3: sprite = kAquaphinSprite; break;
+      case 4: sprite = kLunowlSprite; break;
+      default: break;
+    }
+    draw_sprite(s, 330, 132 + bob, sprite, 16);
+  } else {
+    draw_sprite(s, 330, 132 + bob, kSproutlingSprite, 16);
+  }
+  draw_sprite(s, player_.x - 8, player_.y - 8 + bob, kPlayerSprite, 16);
+  if (hatch_flash_ > 0.0) {
+    const int cx = 100, cy = 145;
+    for (int i = 0; i < 8; ++i) {
+      const double a = animation_time_ * 3.0 + i * 0.785398;
+      const int px = cx + static_cast<int>(std::cos(a) * (10 + (2.4 - hatch_flash_) * 22));
+      const int py = cy + static_cast<int>(std::sin(a) * (8 + (2.4 - hatch_flash_) * 18));
+      s.fill(Rect{px, py, 2, 2}, Color{255, 235, 130, 255});
+    }
+  }
 }
 }
