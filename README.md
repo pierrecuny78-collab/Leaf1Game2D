@@ -10,9 +10,11 @@ Ce dépôt héberge l'application Android LeafStudio2D et le prototype Leaf1Game
 - 480x270 pixel-art scene with crisp nearest-neighbor scaling.
 - Original 16x16 pixel-art sprites for the player, Sproutling creature and golden egg.
 - Touch movement and bounds checking.
-- Egg reward: +100 coins, +35 XP and one collected egg.
+- Egg reward: +100 coins, +35 XP and one collected egg. Eggs can then be hatched separately.
 - Battle reward: +150 coins, +120 XP; the first creature gains XP and levels up.
-- Local progression persistence for coins, XP, player level and egg count.
+- Local progression persistence for coins, XP, player level, egg inventory and hatched-creature count.
+- Animated pixel-art idle motion, egg wobble and hatch sparkle effects.
+- Four hatch rarities (common, rare, epic, legendary), with an epic-or-better guarantee every ten hatches.
 - Offline prototype; no account or network permission.
 
 ## Build and downloads
@@ -40,4 +42,4 @@ See `docs/LEAFENGINE2D_ARCHITECTURE.md` and `engine/README.md`. SDL2 is not curr
 
 ## Roadmap
 
-Next: animation playback, world collisions, collectible objects with proximity checks, egg inventory and hatching screen, creature collection, battle UI and a first boss. Later: larger explorable maps, crafting, building, kingdom progression, optional multiplayer and a separate live-wallpaper service.
+Next: proximity-based collection, full creature roster UI, animated battle actions, world collisions and the first boss. Later: larger explorable maps, crafting, building, kingdom progression, optional multiplayer and a separate live-wallpaper service.
