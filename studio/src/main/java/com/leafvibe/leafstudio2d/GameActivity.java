@@ -61,7 +61,8 @@ public class GameActivity extends Activity {
             root.addView(gameView, new LinearLayout.LayoutParams(-1, 0, 1));
             LinearLayout actions = new LinearLayout(this);
             actions.setGravity(Gravity.CENTER);
-            actions.addView(action("Œuf +100", () -> { LeafEngineBridge.nativeCollectEgg(); refreshStats(); gameView.invalidate(); }));
+            actions.addView(action("Trouver œuf", () -> { LeafEngineBridge.nativeCollectEgg(); refreshStats(); gameView.invalidate(); }));
+            actions.addView(action("Éclore", () -> { int rarity = LeafEngineBridge.nativeHatchEgg(); refreshStats(); gameView.invalidate(); if (rarity == 0) status.setText("Aucun œuf disponible : trouve un œuf avant de le faire éclore."); else status.setText("Éclosion : " + new String[]{"", "Commune", "Rare", "Épique", "Légendaire"}[rarity] + " • Collection : " + LeafEngineBridge.nativeCreatureCount() + " créature(s)"); }));
             actions.addView(action("Combat +150", () -> { LeafEngineBridge.nativeWinBattle(); refreshStats(); gameView.invalidate(); }));
             root.addView(actions);
             LinearLayout move = new LinearLayout(this);
@@ -102,7 +103,8 @@ public class GameActivity extends Activity {
         if (status != null) status.setText("Niveau " + LeafEngineBridge.nativeLevel()
             + "  •  XP " + LeafEngineBridge.nativeXp()
             + "  •  Pièces " + LeafEngineBridge.nativeCoins()
-            + "  •  Œufs " + LeafEngineBridge.nativeEggs());
+            + "  •  Œufs " + LeafEngineBridge.nativeEggs()
+            + "  •  Collection " + LeafEngineBridge.nativeCreatureCount());
     }
 
     private final class PixelGameView extends View {
@@ -115,6 +117,7 @@ public class GameActivity extends Activity {
             if (pixels != null && pixels.length == 480 * 270) {
                 bitmap.setPixels(pixels, 0, 480, 0, 0, 480, 270);
                 canvas.drawBitmap(bitmap, null, new android.graphics.Rect(0, 0, getWidth(), getHeight()), paint);
+                postInvalidateDelayed(33);
             }
         }
         @Override public boolean onTouchEvent(MotionEvent event) {
